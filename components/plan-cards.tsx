@@ -1,75 +1,148 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { developmentPlans } from "@/lib/commerce/plans";
+import { developmentPlans, type PlanCode } from "@/lib/commerce/plans";
+import { landingCopy, type LandingLocale, type SelectedChannel } from "@/lib/landing/copy";
+
+const channelForPlan: Record<PlanCode, SelectedChannel> = {
+  social: "social",
+  branded: "brand",
+  scale: "partnership",
+};
 
 const presentation = {
   social: {
-    summary: "קישור לשיתוף בוואטסאפ, ומכירה מהקטלוג המשותף בלי לקנות מלאי מראש.",
-    features: ["קישור אישי לכל מוצר", "מכירה מהמלאי המשותף", "בלי חנות פרטית ובלי שריון מלאי"],
-    action: "התחלה בחינם עכשיו",
+    he: {
+      summary: "קישור לשיתוף בוואטסאפ, ומכירה מהקטלוג המשותף בלי לקנות מלאי מראש.",
+      features: ["קישור אישי לכל מוצר", "מכירה מהמלאי המשותף", "בלי חנות פרטית ובלי שריון מלאי"],
+      action: "התחלה בחינם עכשיו",
+    },
+    en: {
+      summary: "A WhatsApp link, selling from the shared catalog without buying stock first.",
+      features: ["A personal link for every product", "Selling from shared stock", "No private store and no reserved stock"],
+      action: "Start free now",
+    },
   },
   branded: {
-    summary: "חנות עם השם שלכם, שריון מלאי לקמפיין, והנחה לכמות.",
-    features: ["חנות ודומיין משלכם", "שריון מלאי לקמפיין", "נפתח אחרי אישור מחיר וסליקה"],
-    action: "הצטרפות למסלול חנות מותג",
+    he: {
+      summary: "חנות עם השם שלכם, שריון מלאי לקמפיין, והנחה לכמות.",
+      features: ["חנות ודומיין משלכם", "שריון מלאי לקמפיין", "נפתח אחרי אישור מחיר וסליקה"],
+      action: "הצטרפות למסלול חנות מותג",
+    },
+    en: {
+      summary: "A store in your name, campaign stock, and quantity pricing.",
+      features: ["Your own store and domain", "Campaign stock", "Opens after price and checkout approval"],
+      action: "Join the branded store plan",
+    },
   },
   scale: {
-    summary: "מלאי ששמור אצל הספק, אריזה לפי הסכם, ומחיר שותפות.",
-    features: ["מלאי שמור במחסן הספק", "אריזה ותנאים לפי הסכם", "חנות, קמפיין וקישורי מכירה"],
-    action: "תיאום שיחת שותפות",
+    he: {
+      summary: "מלאי ששמור אצל הספק, אריזה לפי הסכם, ומחיר שותפות.",
+      features: ["מלאי שמור במחסן הספק", "אריזה ותנאים לפי הסכם", "חנות, קמפיין וקישורי מכירה"],
+      action: "תיאום שיחת שותפות",
+    },
+    en: {
+      summary: "Stock held by the supplier, packaging by agreement, and a partnership price.",
+      features: ["Stock held in the supplier warehouse", "Packaging and terms by agreement", "Store, campaign, and sale links"],
+      action: "Book a partnership call",
+    },
   },
 } as const;
 
-function PlanAmount({ free }: { free: boolean }) {
-  if (!free) return "בקרוב";
-  return <span className="shekel" dir="ltr">₪0</span>;
+function PlanAmount({ free, soon }: { free: boolean; soon: string }) {
+  if (!free) return soon;
+  return (
+    <span className="shekel" dir="ltr">
+      ₪0
+    </span>
+  );
 }
 
-export function PlanCards() {
+export function PlanCards({
+  locale = "he",
+  selectedChannel,
+  onSelect,
+}: {
+  locale?: LandingLocale;
+  selectedChannel?: SelectedChannel | null;
+  onSelect?: (channel: SelectedChannel) => void;
+}) {
+  const [internalChannel, setInternalChannel] = useState<SelectedChannel | null>(selectedChannel ?? null);
+  const selected = onSelect ? (selectedChannel ?? null) : internalChannel;
+  const choose = (channel: SelectedChannel) => {
+    if (onSelect) onSelect(channel);
+    else setInternalChannel(channel);
+  };
+  const text = landingCopy[locale];
+  const soon = locale === "he" ? "בקרוב" : "Soon";
   return (
-    <div className="plan-board" aria-label="מסלולים">
-      <div className="plan-billing" role="radiogroup" aria-label="אופן התשלום">
+    <div className="plan-board" aria-label={text.plans}>
+      <div className="plan-billing" role="radiogroup" aria-label={locale === "he" ? "אופן התשלום" : "Billing"}>
         <input className="plan-billing-input" id="plan-monthly" type="radio" name="plan-billing" defaultChecked />
-        <label htmlFor="plan-monthly">תשלום חודשי</label>
+        <label htmlFor="plan-monthly">{text.monthly}</label>
         <input className="plan-billing-input" id="plan-yearly" type="radio" name="plan-billing" />
         <label htmlFor="plan-yearly">
-          תשלום שנתי
-          <span className="plan-save">חיסכון של 20%</span>
+          {text.yearly}
+          <span className="plan-save">{text.yearlySave}</span>
         </label>
       </div>
       <div className="plan-grid">
         {developmentPlans.map((plan) => {
-          const copy = presentation[plan.code];
-          const popular = plan.code === "branded";
+          const copy = presentation[plan.code][locale];
+          const channel = channelForPlan[plan.code];
+          const active = selected === channel;
+          const dim = selected !== null && !active;
           const free = plan.priceAgorot === 0;
-          const monthlyNote = free ? "נפתח בלי חיוב." : "המחיר החודשי עדיין לא אושר.";
-          const yearlyNote = free ? null : "כשהמחיר יאושר, החיוב השנתי נמוך ב-20% מ-12 תשלומים חודשיים.";
+          const monthlyNote = free ? (locale === "he" ? "נפתח בלי חיוב." : "Opens with no charge.") : locale === "he" ? "המחיר החודשי עדיין לא אושר." : "The monthly price is not approved yet.";
+          const title = locale === "he" ? plan.nameHe : plan.code === "social" ? "Social selling" : plan.code === "branded" ? "Branded store" : "Partnership";
           return (
-            <article className={popular ? "card plan-card popular" : "card plan-card"} key={plan.code}>
+            <article
+              className={`card plan-card${active ? " plan-card-active" : ""}${dim ? " plan-card-dim" : ""}${selected === null && plan.code === "branded" ? " popular" : ""}`}
+              key={plan.code}
+              role="button"
+              tabIndex={0}
+              aria-pressed={active}
+              onClick={() => choose(channel)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  choose(channel);
+                }
+              }}
+            >
               <div className="copy">
-                {popular ? <p className="plan-badge">הכי פופולרי</p> : null}
-                <h3 className="section-title">{plan.nameHe}</h3>
+                {plan.code === "branded" ? <p className="plan-badge">{locale === "he" ? "הכי פופולרי" : "Most popular"}</p> : null}
+                <h3 className="section-title">{title}</h3>
                 <p className="hint">{copy.summary}</p>
                 <p className="plan-price price-month">
                   <strong>
-                    <PlanAmount free={free} />
+                    <PlanAmount free={free} soon={soon} />
                   </strong>
-                  <span>לחודש</span>
+                  <span>{locale === "he" ? "לחודש" : "per month"}</span>
                 </p>
                 <p className="plan-price price-year">
                   <strong>
-                    <PlanAmount free={free} />
+                    <PlanAmount free={free} soon={soon} />
                   </strong>
-                  <span>לחודש</span>
+                  <span>{locale === "he" ? "לחודש" : "per month"}</span>
                 </p>
                 <p className="hint price-month">{monthlyNote}</p>
                 <p className="hint price-year">
-                  {yearlyNote ?? (
+                  {free ? (
                     <>
-                      <span className="shekel" dir="ltr">₪0</span> לשנה
+                      <span className="shekel" dir="ltr">
+                        ₪0
+                      </span>{" "}
+                      {locale === "he" ? "לשנה" : "per year"}
                     </>
+                  ) : locale === "he" ? (
+                    "כשהמחיר יאושר, החיוב השנתי נמוך ב-20% מ-12 תשלומים חודשיים."
+                  ) : (
+                    "Once a price is approved, yearly billing is 20% below 12 monthly payments."
                   )}
                 </p>
-                <Link className={popular ? "button-publish" : "button-secondary"} href="/register">
+                <Link className={active || (selected === null && plan.code === "branded") ? "button-publish" : "button-secondary"} href="/register" onClick={(event) => event.stopPropagation()}>
                   {copy.action}
                 </Link>
                 <ul className="plan-features">

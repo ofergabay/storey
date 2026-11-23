@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Wordmark } from "@/components/wordmark";
+import { ChannelSelection } from "@/components/landing/channel-selection";
 import { deleteLandingFaq, moveLandingFaq, saveLandingFaq } from "@/lib/landing/faq-actions";
-import { channels, footerColumns, landingCopy, menuLinks, type LandingLocale } from "@/lib/landing/copy";
+import { channels, footerColumns, landingCopy, menuLinks, selectedChannelForBlock, type LandingLocale, type SelectedChannel } from "@/lib/landing/copy";
 import type { FaqItem } from "@/lib/landing/faq";
 import { showcaseItems, showcaseProfit, type ShowcaseMotif } from "@/lib/landing/showcase";
 import { formatShekels } from "@/lib/money";
@@ -88,8 +89,17 @@ function FaqFields({
   );
 }
 
-export function PublicLanding({ faqs, canEditFaq }: { faqs: FaqItem[]; canEditFaq: boolean }) {
+export function PublicLanding({
+  faqs,
+  canEditFaq,
+  initialChannel = null,
+}: {
+  faqs: FaqItem[];
+  canEditFaq: boolean;
+  initialChannel?: SelectedChannel | null;
+}) {
   const [locale, setLocale] = useState<LandingLocale>("he");
+  const [selectedChannel, setSelectedChannel] = useState<SelectedChannel | null>(initialChannel);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -109,6 +119,20 @@ export function PublicLanding({ faqs, canEditFaq }: { faqs: FaqItem[]; canEditFa
       root.dir = previousDir;
     };
   }, [direction, locale]);
+
+  useEffect(() => {
+    if (!initialChannel) return;
+    document.getElementById("channel-selection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [initialChannel]);
+
+  function chooseChannel(channel: SelectedChannel, scroll: boolean) {
+    setSelectedChannel(channel);
+    const url = new URL(window.location.href);
+    url.searchParams.set("channel", channel);
+    url.hash = "channel-selection";
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    if (scroll) document.getElementById("channel-selection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -235,13 +259,15 @@ export function PublicLanding({ faqs, canEditFaq }: { faqs: FaqItem[]; canEditFa
                   <i />
                 </div>
               </div>
-              <Link className="storey-cta" href="/register">
+              <button className="storey-cta" type="button" onClick={() => chooseChannel(selectedChannelForBlock(channel.id), true)}>
                 {text.start}
-              </Link>
+              </button>
             </div>
           </article>
         ))}
       </section>
+
+      <ChannelSelection locale={locale} selectedChannel={selectedChannel} onSelect={(channel) => chooseChannel(channel, false)} />
 
       <section className="storey-inventory" id="inventory">
         <div className="storey-wrap">

@@ -13,6 +13,14 @@ export const landingCopy = {
     headline: "הופכים כל המלצה לעסק רווחי. בלי מלאי, בלי לוגיסטיקה.",
     subtitle:
       "בוחרים מוצרים מנצחים מקטלוג הספקים, קובעים את מחיר המכירה ומשתפים לינק או חנות ממותגת. הספקים אורזים ושולחים ישירות ללקוח — והרווח נכנס אליכם.",
+    creatorTab: "יוצר/ת",
+    supplierTab: "ספק",
+    monthly: "תשלום חודשי",
+    yearly: "תשלום שנתי",
+    yearlySave: "חיסכון של 20%",
+    supplierTitle: "הצטרפות כספק",
+    supplierBody: "המחסן שומר, מלקט ושולח. ההזמנות מגיעות לליקוט בלי לגייס לקוחות בעצמכם.",
+    supplierCta: "הגשת בקשה להצטרפות כספק",
     start: "תתחילו להרוויח",
     existing: "כניסה לחשבון קיים",
     engineEyebrow: "שלושה מסלולים",
@@ -56,6 +64,14 @@ export const landingCopy = {
     headline: "Turn every recommendation into a profitable brand. Zero inventory. Zero logistics.",
     subtitle:
       "Pick winning products from verified suppliers, set your own retail price, and sell via social links or your own branded storefront while suppliers handle fulfillment.",
+    creatorTab: "Creator",
+    supplierTab: "Supplier",
+    monthly: "Monthly",
+    yearly: "Yearly",
+    yearlySave: "Save 20%",
+    supplierTitle: "Join as a supplier",
+    supplierBody: "The warehouse stores, picks, and ships. Orders arrive for packing without you recruiting buyers.",
+    supplierCta: "Apply to join as a supplier",
     start: "Start Earning",
     existing: "Log in to an existing account",
     engineEyebrow: "Three channels",
@@ -92,11 +108,26 @@ export const landingCopy = {
 export const menuLinks = [
   { href: "/login", key: "login" },
   { href: "/register", key: "signup" },
-  { href: "#channels", key: "plans" },
+  { href: "#channel-selection", key: "plans" },
   { href: "#inventory", key: "catalog" },
   { href: "#faq", key: "faq" },
   { href: "/register/supplier", key: "supplierJoin" },
 ] as const;
+
+export type SelectedChannel = "social" | "brand" | "partnership";
+
+export function selectedChannelForBlock(id: "social" | "branded" | "scale"): SelectedChannel {
+  if (id === "branded") return "brand";
+  if (id === "scale") return "partnership";
+  return "social";
+}
+
+export function parseSelectedChannel(value: string | undefined): SelectedChannel | null {
+  if (value === "social" || value === "brand" || value === "partnership") return value;
+  if (value === "branded") return "brand";
+  if (value === "scale") return "partnership";
+  return null;
+}
 
 export const channels = [
   {

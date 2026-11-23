@@ -234,6 +234,7 @@ button:disabled {
 }
 
 .plan-card {
+  position: relative;
   display: flex;
   overflow: visible;
 }
@@ -261,9 +262,40 @@ button:disabled {
   text-decoration: none;
 }
 
-.plan-card.popular .button-publish {
+.plan-card.popular .button-publish,
+.plan-card-active .button-publish {
   background: linear-gradient(180deg, #0057ff, #003ec4);
   box-shadow: 0 10px 24px rgba(0, 87, 255, 0.18);
+}
+
+.card.plan-card {
+  cursor: pointer;
+}
+
+.card.plan-card.plan-card-active {
+  border: 2px solid #0057ff;
+  opacity: 1;
+  filter: none;
+  background: #ffffff;
+  box-shadow: 0 16px 40px rgba(0, 87, 255, 0.18);
+}
+
+.card.plan-card.plan-card-dim {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  opacity: 0.45;
+  filter: grayscale(1);
+  box-shadow: none;
+}
+
+.card.plan-card.plan-card-dim:hover,
+.card.plan-card.plan-card-dim:focus-visible {
+  opacity: 0.72;
+}
+
+.channel-selection {
+  scroll-margin-top: 88px;
+  padding: 28px 0 72px;
 }
 
 .plan-badge {
