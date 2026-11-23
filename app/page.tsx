@@ -8,7 +8,7 @@ import { readLandingFaq } from "@/lib/landing/faq";
 
 export const metadata: Metadata = {
   title: "Storey",
-  description: "הופכים כל המלצה לעסק רווחי. בלי מלאי, בלי לוגיסטיקה.",
+  description: "בוחרים מוצר, קובעים מחיר ומשתפים לינק. הספק אורז ושולח.",
 };
 
 async function HomeContent({

@@ -7,7 +7,7 @@ import { Wordmark } from "@/components/wordmark";
 import { ChannelSelection } from "@/components/landing/channel-selection";
 import { deleteLandingFaq, moveLandingFaq, saveLandingFaq } from "@/lib/landing/faq-actions";
 import type { AuthIntent } from "@/lib/auth/oauth";
-import { channels, footerColumns, landingCopy, menuLinks, selectedChannelForBlock, type LandingLocale, type SelectedChannel } from "@/lib/landing/copy";
+import { channels, footerLinks, landingCopy, menuLinks, selectedChannelForBlock, type LandingLocale, type SelectedChannel } from "@/lib/landing/copy";
 import type { FaqItem } from "@/lib/landing/faq";
 import { showcaseItems, showcaseProfit, type ShowcaseMotif } from "@/lib/landing/showcase";
 import { formatShekels } from "@/lib/money";
@@ -25,6 +25,34 @@ const motifs: Record<ShowcaseMotif, { from: string; to: string; shape: string }>
 function Money({ agorot, fallback }: { agorot: number | null; fallback: string }) {
   if (agorot === null) return <span>{fallback}</span>;
   return <span dir="ltr">{formatShekels(agorot)}</span>;
+}
+
+function ShowcaseFacts({ item, locale }: { item: (typeof showcaseItems)[number]; locale: LandingLocale }) {
+  const text = landingCopy[locale];
+  if (item.wholesaleAgorot === null && item.retailAgorot === null) {
+    return <p>{locale === "he" ? item.browseHe ?? "לכל המוצרים" : item.browseEn ?? "Browse the products"}</p>;
+  }
+  const profit = showcaseProfit(item);
+  return (
+    <dl>
+      <div>
+        <dt>{text.wholesale}</dt>
+        <dd>
+          <Money agorot={item.wholesaleAgorot} fallback={text.missingCost} />
+        </dd>
+      </div>
+      <div>
+        <dt>{text.retail}</dt>
+        <dd>
+          <Money agorot={item.retailAgorot} fallback={text.unset} />
+        </dd>
+      </div>
+      <div>
+        <dt>{text.profit}</dt>
+        <dd>{profit === null ? text.missingMargin : <Money agorot={profit} fallback={text.missingMargin} />}</dd>
+      </div>
+    </dl>
+  );
 }
 
 function MotifArt({ motif, label, id }: { motif: ShowcaseMotif; label: string; id: string }) {
@@ -242,21 +270,13 @@ export function PublicLanding({
         <div className="marquee-viewport" dir="ltr">
           <div className="marquee-track">
             {loop.map((item, index) => {
-              const profit = showcaseProfit(item);
               const title = locale === "he" ? item.titleHe : item.titleEn;
               return (
                 <article className="marquee-card" key={`${item.id}-${index}`}>
                   <MotifArt motif={item.motif} label={title} id={`${item.id}-${index}`} />
                   <p className="marquee-kicker">{locale === "he" ? item.categoryHe : item.categoryEn}</p>
                   <h2>{title}</h2>
-                  <p className="marquee-tags">
-                    <span>
-                      {text.wholesale} <Money agorot={item.wholesaleAgorot} fallback={text.unset} />
-                    </span>
-                    <span>
-                      {text.beforeFees} <Money agorot={profit} fallback={text.unset} />
-                    </span>
-                  </p>
+                  <ShowcaseFacts item={item} locale={locale} />
                 </article>
               );
             })}
@@ -320,37 +340,19 @@ export function PublicLanding({
           <p>{text.inventoryBody}</p>
           <div className="inventory-grid">
             {showcaseItems.map((item) => {
-              const profit = showcaseProfit(item);
               const title = locale === "he" ? item.titleHe : item.titleEn;
+              const browse = item.wholesaleAgorot === null && item.retailAgorot === null;
               return (
                 <article className="inventory-card" key={item.id}>
                   <MotifArt motif={item.motif} label={title} id={item.id} />
                   <p className="marquee-kicker">{locale === "he" ? item.categoryHe : item.categoryEn}</p>
                   <h3>{title}</h3>
-                  <dl>
-                    <div>
-                      <dt>{text.wholesale}</dt>
-                      <dd>
-                        <Money agorot={item.wholesaleAgorot} fallback={text.unset} />
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>{text.retail}</dt>
-                      <dd>
-                        <Money agorot={item.retailAgorot} fallback={text.unset} />
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>{text.profit}</dt>
-                      <dd>
-                        <Money agorot={profit} fallback={text.unset} />
-                        {profit !== null ? <small>{text.beforeFees}</small> : null}
-                      </dd>
-                    </div>
-                  </dl>
-                  <button className="storey-cta" type="button" onClick={(event) => openAuth("register", event.currentTarget)}>
-                    {text.choose}
-                  </button>
+                  <ShowcaseFacts item={item} locale={locale} />
+                  {browse ? null : (
+                    <button className="storey-cta" type="button" onClick={(event) => openAuth("register", event.currentTarget)}>
+                      {text.choose}
+                    </button>
+                  )}
                 </article>
               );
             })}
@@ -432,30 +434,22 @@ export function PublicLanding({
         </div>
       </section>
 
+      <section className="storey-wrap">
+        <h2>{text.closing}</h2>
+        <button className="storey-cta" type="button" onClick={(event) => openAuth("register", event.currentTarget)}>
+          {text.start}
+        </button>
+      </section>
+
       <footer className="storey-footer" id="footer">
-        <div className="storey-wrap storey-footer-grid">
-          {(
-            [
-              ["company", text.footerCompany],
-              ["social", text.footerSocial],
-              ["legal", text.footerLegal],
-              ["product", text.footerProduct],
-            ] as const
-          ).map(([key, label]) => (
-            <div key={key}>
-              <h2>{label}</h2>
-              <ul>
-                {footerColumns[key][locale].map((item) => {
-                  const href = item === "תמחור" || item === "Pricing" ? "#channels" : item === "לַחקוֹר" || item === "Explore" ? "#inventory" : item === "מדריך מהיר" || item === "Quick guide" ? "#faq" : "#footer";
-                  return (
-                    <li key={item}>
-                      <a href={href}>{item}</a>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+        <div className="storey-wrap">
+          <ul>
+            {footerLinks.map((item) => (
+              <li key={item.href}>
+                <a href={item.href}>{locale === "he" ? item.he : item.en}</a>
+              </li>
+            ))}
+          </ul>
         </div>
         <div className="storey-wrap storey-footer-mark">
           <Wordmark href="/" />

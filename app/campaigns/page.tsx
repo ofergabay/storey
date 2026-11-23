@@ -19,10 +19,10 @@ async function CampaignsContent() {
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">שריון מלאי וקמפיינים</h1>
+      <h1 className="page-title">מלאי לקמפיין</h1>
       {level !== "FULL_ACCESS" ? (
         <>
-          <p className="status">המסלול {plan.nameHe} עדיין לא כולל שריון מלאי לקמפיין. לא נשמר מלאי.</p>
+          <p className="status">המסלול {plan.nameHe} עדיין לא כולל שמירת מלאי לקמפיין. לא נשמר מלאי.</p>
           <Link className="button-secondary" href="/plans">
             לשדרוג המסלול
           </Link>

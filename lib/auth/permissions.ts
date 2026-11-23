@@ -58,7 +58,7 @@ const creatorMenu: NavItem[] = [
   { href: "/catalog", label: "קטלוג מוצרים", capability: "creator.catalog" },
   { href: "/listings", label: "הלינקים והמארזים שלי", capability: "creator.links" },
   { href: "/storefront", label: "חנות ממותגת", capability: "creator.storefront" },
-  { href: "/campaigns", label: "שריון מלאי וקמפיינים", capability: "creator.campaign" },
+  { href: "/campaigns", label: "מלאי לקמפיין", capability: "creator.campaign" },
   { href: "/orders", label: "הזמנות והחזרות", capability: "creator.orders" },
   { href: "/account", label: "תשלומים וחשבוניות", capability: "creator.payouts" },
 ];

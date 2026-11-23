@@ -11,6 +11,8 @@ export type ShowcaseItem = {
   wholesaleAgorot: number | null;
   retailAgorot: number | null;
   motif: ShowcaseMotif;
+  browseHe?: string;
+  browseEn?: string;
 };
 
 export const showcaseItems: ShowcaseItem[] = [
@@ -43,6 +45,8 @@ export const showcaseItems: ShowcaseItem[] = [
     wholesaleAgorot: null,
     retailAgorot: null,
     motif: "gift",
+    browseHe: "לכל המוצרים לאירוח",
+    browseEn: "All hosting products",
   },
   {
     id: "home",
@@ -53,6 +57,8 @@ export const showcaseItems: ShowcaseItem[] = [
     wholesaleAgorot: null,
     retailAgorot: null,
     motif: "home",
+    browseHe: "לכל המוצרים לבית",
+    browseEn: "All home products",
   },
   {
     id: "beauty",
@@ -63,6 +69,8 @@ export const showcaseItems: ShowcaseItem[] = [
     wholesaleAgorot: null,
     retailAgorot: null,
     motif: "beauty",
+    browseHe: "לכל מוצרי הטיפוח",
+    browseEn: "All care products",
   },
   {
     id: "fitness",
@@ -73,6 +81,8 @@ export const showcaseItems: ShowcaseItem[] = [
     wholesaleAgorot: null,
     retailAgorot: null,
     motif: "fitness",
+    browseHe: "לכל מוצרי הכושר",
+    browseEn: "All fitness products",
   },
   {
     id: "camp",
@@ -83,6 +93,8 @@ export const showcaseItems: ShowcaseItem[] = [
     wholesaleAgorot: null,
     retailAgorot: null,
     motif: "camp",
+    browseHe: "לכל ציוד הטיולים",
+    browseEn: "All outdoor gear",
   },
 ];
 
