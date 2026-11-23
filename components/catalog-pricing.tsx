@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { ProductArt } from "@/components/product-art";
 import { publishCatalogPrice, saveCatalogDraft, setCatalogSalePaused } from "@/lib/catalog/actions";
-import { offerActionLabel, offerControls } from "@/lib/catalog/offer";
-import { agorotToInput, formatMarginRatio, formatShekelAfter, formatShekels } from "@/lib/money";
-import { grossMarginRatio, grossProfitAgorot, parseRetailDraft } from "@/lib/pricing";
+import { offerActionLabel, offerControls, packEarnings } from "@/lib/catalog/offer";
+import type { PolicyVersion } from "@/lib/commerce/payment/flag";
+import { agorotToInput, formatShekels } from "@/lib/money";
+import { grossProfitAgorot, parseRetailDraft } from "@/lib/pricing";
 
 export function CatalogPricing({
   sku,
@@ -23,6 +24,8 @@ export function CatalogPricing({
   paused,
   salePath,
   storefront,
+  campaign,
+  feePolicy,
 }: {
   sku: string;
   title: string;
@@ -39,6 +42,8 @@ export function CatalogPricing({
   paused: boolean;
   salePath: string | null;
   storefront: boolean;
+  campaign: boolean;
+  feePolicy: PolicyVersion;
 }) {
   const suggested = Math.max(costAgorot, costAgorot + 1500);
   const opening = draftAgorot ?? (publishedAgorot > 0 ? publishedAgorot : suggested);
@@ -60,17 +65,19 @@ export function CatalogPricing({
   const [note, setNote] = useState("");
   const [preview, setPreview] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [retry, setRetry] = useState(false);
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState<"publish" | "pause" | null>(null);
   const saveGeneration = useRef(0);
+  const publishing = useRef(false);
   const previewRef = useRef<HTMLDialogElement>(null);
 
   const parsed = parseRetailDraft(draft);
-  const profit = parsed.status === "priced" ? grossProfitAgorot(parsed.agorot, costAgorot) : null;
-  const margin = parsed.status === "priced" ? grossMarginRatio(parsed.agorot, costAgorot) : null;
-  const belowCost = profit !== null && profit < 0;
-  const profitText = profit === null || margin === null ? null : `${formatShekelAfter(profit)} (${formatMarginRatio(margin)})`;
   const currentAgorot = parsed.status === "priced" ? parsed.agorot : null;
+  const profit = currentAgorot === null ? null : grossProfitAgorot(currentAgorot, costAgorot);
+  const belowCost = profit !== null && profit < 0;
+  const earnings = currentAgorot !== null && !belowCost ? packEarnings(currentAgorot, costAgorot, feePolicy) : null;
   const priceSynced = currentAgorot !== null && currentAgorot === savedAgorot;
   const copySynced = headline.trim() === savedHeadline.trim() && recommendation.trim() === savedRecommendation.trim();
   const synced = priceSynced && copySynced;
@@ -100,12 +107,14 @@ export function CatalogPricing({
     const snapshot = { retail: draft, agorot: currentAgorot, headline, recommendation };
     const timer = window.setTimeout(() => {
       if (generation !== saveGeneration.current) return;
+      setSaving(true);
       startTransition(async () => {
         const result = await saveCatalogDraft(sku, snapshot.retail, {
           headline: snapshot.headline,
           recommendation: snapshot.recommendation,
         });
         if (generation !== saveGeneration.current) return;
+        setSaving(false);
         if (!result.ok) {
           setSaveError(result.message);
           return;
@@ -147,36 +156,44 @@ export function CatalogPricing({
   }
 
   function publish() {
-    if (!canSubmit) return;
+    if (!canSubmit || publishing.current) return;
+    publishing.current = true;
     const submitted = draft;
     const submittedHeadline = headline;
     const submittedRecommendation = recommendation;
     const wasLive = liveAgorot > 0;
+    saveGeneration.current += 1;
     setBusy("publish");
     setCopied(false);
     startTransition(async () => {
-      const result = await publishCatalogPrice(sku, submitted, {
-        headline: submittedHeadline,
-        recommendation: submittedRecommendation,
-      });
-      setBusy(null);
-      if (!result.ok) {
-        setSaveError(result.message);
-        return;
+      try {
+        const result = await publishCatalogPrice(sku, submitted, {
+          headline: submittedHeadline,
+          recommendation: submittedRecommendation,
+        });
+        if (!result.ok) {
+          setRetry(true);
+          setSaveError(result.message);
+          return;
+        }
+        setRetry(false);
+        const agorot = parseRetailDraft(submitted);
+        if (agorot.status !== "priced") return;
+        setLiveAgorot(agorot.agorot);
+        setSavedAgorot(agorot.agorot);
+        setLiveHeadline(submittedHeadline.trim());
+        setSavedHeadline(submittedHeadline.trim());
+        setLiveRecommendation(submittedRecommendation.trim());
+        setSavedRecommendation(submittedRecommendation.trim());
+        setSalePaused(false);
+        setPath(result.path);
+        setJustUpdated(wasLive);
+        setSaveError(null);
+        setNote(buyerNote(agorot.agorot, submittedHeadline.trim() || title));
+      } finally {
+        publishing.current = false;
+        setBusy(null);
       }
-      const agorot = parseRetailDraft(submitted);
-      if (agorot.status !== "priced") return;
-      setLiveAgorot(agorot.agorot);
-      setSavedAgorot(agorot.agorot);
-      setLiveHeadline(submittedHeadline.trim());
-      setSavedHeadline(submittedHeadline.trim());
-      setLiveRecommendation(submittedRecommendation.trim());
-      setSavedRecommendation(submittedRecommendation.trim());
-      setSalePaused(false);
-      setPath(result.path);
-      setJustUpdated(wasLive);
-      setSaveError(null);
-      setNote(buyerNote(agorot.agorot, submittedHeadline.trim() || title));
     });
   }
 
@@ -198,10 +215,10 @@ export function CatalogPricing({
 
   function openShare(kind: "whatsapp" | "post") {
     const url = absoluteUrl();
-    const text = note || buyerNote(liveAgorot, liveHeadline.trim() || title);
-    if (!note) setNote(text);
+    const text = withLink(note || buyerNote(liveAgorot, liveHeadline.trim() || title), url);
+    setNote(text);
     if (kind === "whatsapp") {
-      window.open(`https://wa.me/?text=${encodeURIComponent(withLink(text, url))}`, "_blank", "noopener,noreferrer");
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
     }
     setShareOpen(kind);
   }
@@ -221,7 +238,14 @@ export function CatalogPricing({
   const previewTitle = headline.trim() || title;
   const previewSummary = recommendation.trim() || "מוצר שפורסם מהקטלוג.";
   const previewPrice = parsed.status === "priced" ? formatShekels(parsed.agorot) : null;
-  const primaryLabel = busy === "publish" ? "מפרסם…" : busy === "pause" ? "מעדכן…" : offerActionLabel(controls.action);
+  const primaryLabel = busy === "publish"
+    ? "מפרסם…"
+    : busy === "pause"
+      ? "מעדכן…"
+      : retry && (controls.action === "publish" || controls.action === "publish-changes")
+        ? "ניסיון חוזר"
+        : offerActionLabel(controls.action);
+  const saveStatus = saving ? "שומר את הטיוטה…" : quietSaved;
 
   return (
     <section className="card offer-card">
@@ -236,10 +260,15 @@ export function CatalogPricing({
           <strong dir="ltr">{formatShekels(costAgorot)}</strong>
         </p>
         <p className="quote-line">
-          <span>מרווח לפני עמלות</span>
-          <strong dir="ltr">{profitText ?? "—"}</strong>
+          <span>{earnings?.label ?? "מרווח לפני עמלות"}</span>
+          <strong dir="ltr">{earnings?.amount ?? "—"}</strong>
         </p>
-        <p className="hint">ההפרש בין מחיר המכירה לעלות. עמלת היוצר/ת להצעה הזו עדיין לא נקבעה.</p>
+        <p className="hint">{earnings?.hint ?? "ההפרש בין מחיר המכירה לעלות. עמלת היוצר/ת להצעה הזו עדיין לא נקבעה."}</p>
+        {liveAgorot > 0 && currentAgorot !== null && currentAgorot !== liveAgorot ? (
+          <p className="hint">
+            בעמוד המכירה {formatShekels(liveAgorot)} · בטיוטה {formatShekels(currentAgorot)}
+          </p>
+        ) : null}
         <p className="hint">{stockLabel}</p>
         <form
           className="catalog-price"
@@ -329,7 +358,7 @@ export function CatalogPricing({
             <p className="status" role="status">
               {controls.status}
             </p>
-            {quietSaved ? <p className="hint">{quietSaved}</p> : null}
+            {saveStatus ? <p className="hint">{saveStatus}</p> : null}
             {copied ? <p className="status">הקישור הועתק</p> : null}
             {manualLink ? (
               <label className="sale-copy" htmlFor="manual-sale-link">
@@ -386,9 +415,9 @@ export function CatalogPricing({
               פתיחת עמוד המכירה
             </a>
             <details className="more-actions">
-              <summary aria-label="עוד פעולות">⋯</summary>
-              <a href="/campaigns">הוספה לקמפיין</a>
-              {storefront ? <a href="/storefront">הוספה לחנות שלי</a> : null}
+              <summary>פעולות נוספות</summary>
+              {campaign ? <a href="/campaigns">הוספה לקמפיין</a> : <p className="hint">הוספה לקמפיין זמינה במסלול שכולל קמפיינים.</p>}
+              {storefront ? <a href="/storefront">הוספה לחנות שלי</a> : <p className="hint">הוספה לחנות זמינה במסלול שכולל חנות.</p>}
               <a href="/earnings">צפייה בביצועים</a>
               <button type="button" onClick={() => setPaused(true)}>
                 השהיית המכירה

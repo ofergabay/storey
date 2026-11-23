@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { offerActionLabel, offerControls } from "../lib/catalog/offer.ts";
+import { ORIGINAL_POLICY, PAYMENT_POLICY } from "../lib/commerce/payment/flag.ts";
+import { offerActionLabel, offerControls, packEarnings } from "../lib/catalog/offer.ts";
 
 const live = {
   publishedAgorot: 4700,
@@ -44,6 +45,21 @@ test("publishing a change keeps the same link", () => {
   const result = offerControls({ ...live, justUpdated: true });
   assert.equal(result.action, "copy");
   assert.equal(result.status, "המחיר עודכן. קישור המכירה נשאר זהה.");
+});
+
+test("a saved draft of 49 keeps the buyer price at 47", () => {
+  const result = offerControls({ ...live, currentAgorot: 4900, synced: true });
+  assert.equal(result.action, "publish-changes");
+  assert.equal(result.status, "המחיר החדש נשמר בטיוטה. בעמוד המכירה עדיין מוצג ₪47.");
+});
+
+test("47 over a 32 cost is margin before fees until a creator fee applies", () => {
+  const beforeFees = packEarnings(4700, 3200, ORIGINAL_POLICY);
+  assert.equal(beforeFees?.label, "מרווח לפני עמלות");
+  assert.equal(beforeFees?.amount, "15 ₪ (31.9%)");
+  const expected = packEarnings(4700, 3200, PAYMENT_POLICY);
+  assert.equal(expected?.label, "הרווח הצפוי שלך למארז");
+  assert.equal(expected?.amount, "13.50 ₪");
 });
 
 test("a paused sale can resume and does not offer sharing", () => {

@@ -155,6 +155,175 @@ button:disabled {
   gap: 12px;
 }
 
+.plan-board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.plan-board > .section-title {
+  text-align: center;
+}
+
+.plan-billing {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 0 20px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+}
+
+.plan-billing-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.plan-billing label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.plan-billing input:checked + label {
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 1px 2px #2028181f;
+}
+
+.plan-billing input:focus-visible + label {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.plan-save {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e7f6ee;
+  color: #1d6b42;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.plan-grid {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.plan-card {
+  display: flex;
+  overflow: visible;
+}
+
+.plan-card .copy {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.plan-card.popular {
+  position: relative;
+  margin-top: 14px;
+  border: 2px solid var(--accent);
+}
+
+.plan-badge {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  transform: translate(-50%, -50%);
+}
+
+.plan-price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.plan-price strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 48px;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.plan-price span {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.price-year {
+  display: none;
+}
+
+.plan-board:has(#plan-yearly:checked) .price-month {
+  display: none;
+}
+
+.plan-board:has(#plan-yearly:checked) .price-year {
+  display: flex;
+}
+
+.plan-board:has(#plan-yearly:checked) p.hint.price-year {
+  display: block;
+}
+
+.plan-features {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+
+.plan-features li {
+  position: relative;
+  padding-inline-start: 18px;
+}
+
+.plan-features li::before {
+  content: "✓";
+  position: absolute;
+  inset-inline-start: 0;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+@media (min-width: 900px) {
+  .plan-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+  }
+}
+
 .csv-upload label {
   display: grid;
   gap: 6px;
@@ -234,15 +403,17 @@ button:disabled {
 }
 
 .more-actions summary {
-  width: 44px;
+  width: fit-content;
   min-height: 44px;
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: white;
   list-style: none;
-  font-size: 22px;
+  font-size: 15px;
+  font-weight: 700;
   line-height: 1;
   cursor: pointer;
 }
@@ -291,22 +462,6 @@ button:disabled {
   .art-compact svg {
     aspect-ratio: 2 / 1;
     max-height: 168px;
-  }
-
-  .offer-card {
-    padding-bottom: 168px;
-  }
-
-  .offer-actions {
-    position: fixed;
-    z-index: 6;
-    left: 50%;
-    bottom: 0;
-    transform: translateX(-50%);
-    width: min(100%, 480px);
-    padding: 10px 16px 12px;
-    background: var(--card);
-    border-top: 1px solid var(--line);
   }
 }
 

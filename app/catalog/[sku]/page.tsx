@@ -5,9 +5,11 @@ import { redirect } from "next/navigation";
 import { CatalogPricing } from "@/components/catalog-pricing";
 import { Denied, RoleNav } from "@/components/role-nav";
 import { readAccess } from "@/lib/auth/access";
-import { CLOUD_NINE_SKU } from "@/lib/catalog/identity";
+import { CLOUD_NINE_SKU, sellerHandleFromEmail } from "@/lib/catalog/identity";
 import { sellableQuantity } from "@/lib/catalog/model";
 import { readCatalog } from "@/lib/catalog/store";
+import { developmentPlans } from "@/lib/commerce/plans";
+import { policyForSeller } from "@/lib/commerce/payment/cohort";
 
 export const metadata: Metadata = {
   title: "תמחור מוצר",
@@ -61,6 +63,8 @@ async function PricingContent({ params }: { params: Promise<{ sku: string }> }) 
         paused={listing?.paused ?? false}
         salePath={listing ? `/s/${listing.sellerHandle}/${listing.slug}` : null}
         storefront={false}
+        campaign={developmentPlans.find((plan) => plan.code === "social")?.canCampaign ?? false}
+        feePolicy={policyForSeller(listing?.sellerHandle ?? sellerHandleFromEmail(access.email ?? access.userId ?? "", access.userId ?? ""))}
       />
     </>
   );
