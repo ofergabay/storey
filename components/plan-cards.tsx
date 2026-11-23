@@ -16,36 +16,36 @@ const presentation = {
     he: {
       summary: "קישור לשיתוף בוואטסאפ, ומכירה מהקטלוג המשותף בלי לקנות מלאי מראש.",
       features: ["קישור אישי לכל מוצר", "מכירה מהמלאי המשותף", "בלי חנות פרטית ובלי שריון מלאי"],
-      action: "התחלה בחינם עכשיו",
+      action: "הרשמה בחינם",
     },
     en: {
       summary: "A WhatsApp link, selling from the shared catalog without buying stock first.",
       features: ["A personal link for every product", "Selling from shared stock", "No private store and no reserved stock"],
-      action: "Start free now",
+      action: "Sign up free",
     },
   },
   branded: {
     he: {
       summary: "חנות עם השם שלכם, שריון מלאי לקמפיין, והנחה לכמות.",
       features: ["חנות ודומיין משלכם", "שריון מלאי לקמפיין", "נפתח אחרי אישור מחיר וסליקה"],
-      action: "הצטרפות למסלול חנות מותג",
+      action: "השארת פרטים",
     },
     en: {
       summary: "A store in your name, campaign stock, and quantity pricing.",
       features: ["Your own store and domain", "Campaign stock", "Opens after price and checkout approval"],
-      action: "Join the branded store plan",
+      action: "Leave your details",
     },
   },
   scale: {
     he: {
       summary: "מלאי ששמור אצל הספק, אריזה לפי הסכם, ומחיר שותפות.",
       features: ["מלאי שמור במחסן הספק", "אריזה ותנאים לפי הסכם", "חנות, קמפיין וקישורי מכירה"],
-      action: "תיאום שיחת שותפות",
+      action: "השארת פרטים",
     },
     en: {
       summary: "Stock held by the supplier, packaging by agreement, and a partnership price.",
       features: ["Stock held in the supplier warehouse", "Packaging and terms by agreement", "Store, campaign, and sale links"],
-      action: "Book a partnership call",
+      action: "Leave your details",
     },
   },
 } as const;
@@ -63,10 +63,12 @@ export function PlanCards({
   locale = "he",
   selectedChannel,
   onSelect,
+  onFreePlan,
 }: {
   locale?: LandingLocale;
   selectedChannel?: SelectedChannel | null;
   onSelect?: (channel: SelectedChannel) => void;
+  onFreePlan?: (opener: HTMLElement) => void;
 }) {
   const [internalChannel, setInternalChannel] = useState<SelectedChannel | null>(selectedChannel ?? null);
   const selected = onSelect ? (selectedChannel ?? null) : internalChannel;
@@ -142,9 +144,27 @@ export function PlanCards({
                     "Once a price is approved, yearly billing is 20% below 12 monthly payments."
                   )}
                 </p>
-                <Link className={active || (selected === null && plan.code === "branded") ? "button-publish" : "button-secondary"} href="/register" onClick={(event) => event.stopPropagation()}>
-                  {copy.action}
-                </Link>
+                {free && onFreePlan ? (
+                  <button
+                    className={active || (selected === null && plan.code === "branded") ? "button-publish" : "button-secondary"}
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      choose(channel);
+                      onFreePlan(event.currentTarget);
+                    }}
+                  >
+                    {copy.action}
+                  </button>
+                ) : (
+                  <Link
+                    className={active || (selected === null && plan.code === "branded") ? "button-publish" : "button-secondary"}
+                    href={free ? "/register?plan=social" : `/register?lead=1&plan=${plan.code}`}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    {copy.action}
+                  </Link>
+                )}
                 <ul className="plan-features">
                   {copy.features.map((feature) => (
                     <li key={feature}>{feature}</li>

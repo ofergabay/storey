@@ -9,6 +9,7 @@ export type Application = {
   name: string;
   status: "pending" | "approved" | "missing";
   missing: string[];
+  plan?: "social" | "branded" | "scale";
 };
 
 export type CampaignReserve = {

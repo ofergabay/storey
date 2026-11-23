@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { AuthOverlay } from "@/components/auth-overlay";
 import { Wordmark } from "@/components/wordmark";
 import { ChannelSelection } from "@/components/landing/channel-selection";
 import { deleteLandingFaq, moveLandingFaq, saveLandingFaq } from "@/lib/landing/faq-actions";
+import type { AuthIntent } from "@/lib/auth/oauth";
 import { channels, footerColumns, landingCopy, menuLinks, selectedChannelForBlock, type LandingLocale, type SelectedChannel } from "@/lib/landing/copy";
 import type { FaqItem } from "@/lib/landing/faq";
 import { showcaseItems, showcaseProfit, type ShowcaseMotif } from "@/lib/landing/showcase";
@@ -93,14 +95,21 @@ export function PublicLanding({
   faqs,
   canEditFaq,
   initialChannel = null,
+  initialAuth = null,
+  authError = null,
 }: {
   faqs: FaqItem[];
   canEditFaq: boolean;
   initialChannel?: SelectedChannel | null;
+  initialAuth?: AuthIntent | null;
+  authError?: string | null;
 }) {
   const [locale, setLocale] = useState<LandingLocale>("he");
   const [selectedChannel, setSelectedChannel] = useState<SelectedChannel | null>(initialChannel);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(initialAuth !== null);
+  const [authMode, setAuthMode] = useState<AuthIntent>(initialAuth ?? "login");
+  const [authOpener, setAuthOpener] = useState<HTMLElement | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [notice, setNotice] = useState("");
@@ -124,6 +133,21 @@ export function PublicLanding({
     if (!initialChannel) return;
     document.getElementById("channel-selection")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [initialChannel]);
+
+  function openAuth(mode: AuthIntent, opener: HTMLElement) {
+    setAuthOpener(opener);
+    setAuthMode(mode);
+    setAuthOpen(true);
+    setMenuOpen(false);
+  }
+
+  const closeAuth = useCallback(() => {
+    setAuthOpen(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("auth");
+    url.searchParams.delete("error");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
 
   function chooseChannel(channel: SelectedChannel, scroll: boolean) {
     setSelectedChannel(channel);
@@ -167,7 +191,12 @@ export function PublicLanding({
             English
           </button>
         </div>
-        <Wordmark href="/" />
+        <div className="storey-nav-end">
+          <button className="storey-nav-login" type="button" onClick={(event) => openAuth("login", event.currentTarget)}>
+            {text.login}
+          </button>
+          <Wordmark href="/" />
+        </div>
       </header>
 
       {menuOpen ? (
@@ -177,11 +206,22 @@ export function PublicLanding({
             <button className="storey-quiet" type="button" onClick={() => setMenuOpen(false)}>
               {text.closeLabel}
             </button>
-            {menuLinks.map((item) => (
-              <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>
-                {text[item.key]}
-              </Link>
-            ))}
+            {menuLinks.map((item) =>
+              item.key === "login" || item.key === "signup" ? (
+                <button
+                  className="storey-drawer-auth"
+                  key={item.key}
+                  type="button"
+                  onClick={(event) => openAuth(item.key === "login" ? "login" : "register", event.currentTarget)}
+                >
+                  {text[item.key]}
+                </button>
+              ) : (
+                <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>
+                  {text[item.key]}
+                </Link>
+              ),
+            )}
           </nav>
         </div>
       ) : null}
@@ -191,12 +231,12 @@ export function PublicLanding({
           <h1>{text.headline}</h1>
           <p>{text.subtitle}</p>
           <div className="storey-hero-actions">
-            <Link className="storey-cta" href="/register">
+            <button className="storey-cta" type="button" onClick={(event) => openAuth("register", event.currentTarget)}>
               {text.start}
-            </Link>
-            <Link className="storey-text-link" href="/login">
+            </button>
+            <button className="storey-text-link" type="button" onClick={(event) => openAuth("login", event.currentTarget)}>
               {text.existing}
-            </Link>
+            </button>
           </div>
         </div>
         <div className="marquee-viewport" dir="ltr">
@@ -267,7 +307,12 @@ export function PublicLanding({
         ))}
       </section>
 
-      <ChannelSelection locale={locale} selectedChannel={selectedChannel} onSelect={(channel) => chooseChannel(channel, false)} />
+      <ChannelSelection
+        locale={locale}
+        selectedChannel={selectedChannel}
+        onSelect={(channel) => chooseChannel(channel, false)}
+        onFreePlan={(opener) => openAuth("register", opener)}
+      />
 
       <section className="storey-inventory" id="inventory">
         <div className="storey-wrap">
@@ -303,9 +348,9 @@ export function PublicLanding({
                       </dd>
                     </div>
                   </dl>
-                  <Link className="storey-cta" href="/register">
+                  <button className="storey-cta" type="button" onClick={(event) => openAuth("register", event.currentTarget)}>
                     {text.choose}
-                  </Link>
+                  </button>
                 </article>
               );
             })}
@@ -416,6 +461,7 @@ export function PublicLanding({
           <Wordmark href="/" />
         </div>
       </footer>
+      <AuthOverlay open={authOpen} mode={authMode} locale={locale} errorCode={authError} returnFocus={authOpener} onClose={closeAuth} />
     </div>
   );
 }

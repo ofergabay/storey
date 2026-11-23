@@ -9,10 +9,12 @@ export function ChannelSelection({
   locale,
   selectedChannel,
   onSelect,
+  onFreePlan,
 }: {
   locale: LandingLocale;
   selectedChannel: SelectedChannel | null;
   onSelect: (channel: SelectedChannel) => void;
+  onFreePlan?: (opener: HTMLElement) => void;
 }) {
   const text = landingCopy[locale];
   return (
@@ -25,7 +27,7 @@ export function ChannelSelection({
           <label htmlFor="audience-supplier">{text.supplierTab}</label>
         </div>
         <div className="creator-view">
-          <PlanCards locale={locale} selectedChannel={selectedChannel} onSelect={onSelect} />
+          <PlanCards locale={locale} selectedChannel={selectedChannel} onSelect={onSelect} onFreePlan={onFreePlan} />
         </div>
         <div className="supplier-view">
           <h2>{text.supplierTitle}</h2>

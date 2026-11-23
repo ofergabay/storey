@@ -11,7 +11,11 @@ export const metadata: Metadata = {
   description: "הופכים כל המלצה לעסק רווחי. בלי מלאי, בלי לוגיסטיקה.",
 };
 
-async function HomeContent({ searchParams }: { searchParams: Promise<{ preview?: string; channel?: string }> }) {
+async function HomeContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ preview?: string; channel?: string; auth?: string; error?: string }>;
+}) {
   const [access, query] = await Promise.all([readAccess(), searchParams]);
   const preview = access.role === "admin" && query.preview === "1";
   if (!preview) {
@@ -19,10 +23,22 @@ async function HomeContent({ searchParams }: { searchParams: Promise<{ preview?:
     if (destination !== "/") redirect(destination);
   }
 
-  return <PublicLanding faqs={readLandingFaq()} canEditFaq={preview} initialChannel={parseSelectedChannel(query.channel)} />;
+  return (
+    <PublicLanding
+      faqs={readLandingFaq()}
+      canEditFaq={preview}
+      initialChannel={parseSelectedChannel(query.channel)}
+      initialAuth={query.auth === "register" ? "register" : query.auth === "login" ? "login" : null}
+      authError={query.error === "google" ? "google" : null}
+    />
+  );
 }
 
-export default function HomePage({ searchParams }: { searchParams: Promise<{ preview?: string; channel?: string }> }) {
+export default function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ preview?: string; channel?: string; auth?: string; error?: string }>;
+}) {
   return (
     <Suspense fallback={<p className="status">טוען…</p>}>
       <HomeContent searchParams={searchParams} />

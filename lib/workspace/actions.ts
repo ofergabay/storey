@@ -407,6 +407,8 @@ export async function submitApplication(formData: FormData): Promise<void> {
   const role = formData.get("role") === "supplier" ? "supplier" : "creator";
   const email = String(formData.get("email") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
+  const planValue = String(formData.get("plan") ?? "");
+  const plan = role === "creator" && (planValue === "social" || planValue === "branded" || planValue === "scale") ? planValue : undefined;
   const workspace = readWorkspace();
   const missing = [];
   if (name.length < 2) missing.push("שם");
@@ -418,6 +420,7 @@ export async function submitApplication(formData: FormData): Promise<void> {
     name,
     status: missing.length > 0 ? "missing" : "pending",
     missing,
+    ...(plan ? { plan } : {}),
   });
   writeWorkspace(workspace);
   revalidatePath("/onboarding");
