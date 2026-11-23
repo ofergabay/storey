@@ -9,10 +9,10 @@ export const metadata: Metadata = { title: "הרשאות ותפקידים", desc
 
 const roles = [
   ["guest", "אורח", "/"],
-  ["creator", "יוצר/ת", "/studio"],
+  ["creator", "יוצר/ת", "/earnings"],
   ["supplier", "ספק", "/supplier"],
   ["warehouse", "מחסן", "/supplier"],
-  ["admin", "ניהול מערכת", "/admin"],
+  ["admin", "ניהול מערכת", "/admin/staging"],
 ] as const;
 
 async function DevContent() {

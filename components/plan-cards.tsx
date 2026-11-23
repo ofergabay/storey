@@ -5,19 +5,24 @@ const presentation = {
   social: {
     summary: "קישור לשיתוף בוואטסאפ, ומכירה מהקטלוג המשותף בלי לקנות מלאי מראש.",
     features: ["קישור אישי לכל מוצר", "מכירה מהמלאי המשותף", "בלי חנות פרטית ובלי שריון מלאי"],
-    action: "הרשמה בחינם",
+    action: "התחלה בחינם עכשיו",
   },
   branded: {
     summary: "חנות עם השם שלכם, שריון מלאי לקמפיין, והנחה לכמות.",
     features: ["חנות ודומיין משלכם", "שריון מלאי לקמפיין", "נפתח אחרי אישור מחיר וסליקה"],
-    action: "השארת פרטים",
+    action: "הצטרפות למסלול חנות מותג",
   },
   scale: {
     summary: "מלאי ששמור אצל הספק, אריזה לפי הסכם, ומחיר שותפות.",
     features: ["מלאי שמור במחסן הספק", "אריזה ותנאים לפי הסכם", "חנות, קמפיין וקישורי מכירה"],
-    action: "השארת פרטים",
+    action: "תיאום שיחת שותפות",
   },
 } as const;
+
+function PlanAmount({ free }: { free: boolean }) {
+  if (!free) return "בקרוב";
+  return <span className="shekel" dir="ltr">₪0</span>;
+}
 
 export function PlanCards() {
   return (
@@ -35,9 +40,9 @@ export function PlanCards() {
         {developmentPlans.map((plan) => {
           const copy = presentation[plan.code];
           const popular = plan.code === "branded";
-          const price = plan.priceAgorot === 0 ? "₪0" : "בקרוב";
-          const monthlyNote = plan.priceAgorot === 0 ? "נפתח בלי חיוב." : "המחיר החודשי עדיין לא אושר.";
-          const yearlyNote = plan.priceAgorot === 0 ? "₪0 לשנה" : "כשהמחיר יאושר, החיוב השנתי נמוך ב-20% מ-12 תשלומים חודשיים.";
+          const free = plan.priceAgorot === 0;
+          const monthlyNote = free ? "נפתח בלי חיוב." : "המחיר החודשי עדיין לא אושר.";
+          const yearlyNote = free ? null : "כשהמחיר יאושר, החיוב השנתי נמוך ב-20% מ-12 תשלומים חודשיים.";
           return (
             <article className={popular ? "card plan-card popular" : "card plan-card"} key={plan.code}>
               <div className="copy">
@@ -45,15 +50,25 @@ export function PlanCards() {
                 <h3 className="section-title">{plan.nameHe}</h3>
                 <p className="hint">{copy.summary}</p>
                 <p className="plan-price price-month">
-                  <strong dir="ltr">{price}</strong>
+                  <strong>
+                    <PlanAmount free={free} />
+                  </strong>
                   <span>לחודש</span>
                 </p>
                 <p className="plan-price price-year">
-                  <strong dir="ltr">{price}</strong>
+                  <strong>
+                    <PlanAmount free={free} />
+                  </strong>
                   <span>לחודש</span>
                 </p>
                 <p className="hint price-month">{monthlyNote}</p>
-                <p className="hint price-year">{yearlyNote}</p>
+                <p className="hint price-year">
+                  {yearlyNote ?? (
+                    <>
+                      <span className="shekel" dir="ltr">₪0</span> לשנה
+                    </>
+                  )}
+                </p>
                 <Link className={popular ? "button-publish" : "button-secondary"} href="/register">
                   {copy.action}
                 </Link>

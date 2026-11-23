@@ -18,6 +18,9 @@ async function StagingContent() {
     <>
       <RoleNav access={access} />
       <h1 className="page-title">תור בדיקה</h1>
+      <p>
+        <Link href="/?preview=1">תצוגת דף הבית ועריכת שאלות</Link>
+      </p>
       {rows.length === 0 ? <p className="status">אין שורות בתור. ייבוא מוצרים נמצא בלוח הבקרה.</p> : null}
       <div className="catalog-list">
         {rows.map((row) => (

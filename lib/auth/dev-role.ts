@@ -19,5 +19,5 @@ export async function setDevRole(role: DevRole | "guest") {
   const jar = await cookies();
   if (role === "guest") jar.delete(cookieName);
   else jar.set(cookieName, role, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 8 });
-  redirect(role === "guest" ? "/" : role === "creator" ? "/studio" : role === "admin" ? "/admin" : "/supplier");
+  redirect(role === "guest" ? "/" : role === "creator" ? "/earnings" : role === "admin" ? "/admin/staging" : "/supplier");
 }
