@@ -1,0 +1,2 @@
+supplier_sku,warehouse_code,counted_quantity,counted_at,sequence,movement_watermark
+LILAC-24,PILOT-01,12,2026-11-23T00:00:00Z,1,0

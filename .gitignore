@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# development catalog written by the admin screens
+/data/dev-catalog.json
+/data/dev-workspace.json
+/data/dev-payment-cases.json
+/data/dev-payment-cohort.json
+/data/dev-payment-provider.json
+/data/dev-payment-crash.json

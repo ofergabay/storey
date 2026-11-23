@@ -1,0 +1,52 @@
+import { Suspense } from "react";
+import type { Metadata } from "next";
+import { RoleNav } from "@/components/role-nav";
+import { readAccess } from "@/lib/auth/access";
+import { readWorkspace } from "@/lib/workspace/store";
+import { submitApplication } from "@/lib/workspace/actions";
+
+export const metadata: Metadata = { title: "השלמת פרטים", description: "סטטוס בקשה ופרטים חסרים." };
+
+async function OnboardingContent() {
+  const access = await readAccess();
+  const mine = readWorkspace().applications.filter((item) => item.email === access.email);
+  const latest = mine[0];
+  return (
+    <>
+      <RoleNav access={access} />
+      <h1 className="page-title">השלמת פרטים</h1>
+      {latest ? (
+        <p className="status">
+          סטטוס הבקשה: {latest.status === "approved" ? "אושרה" : latest.status === "missing" ? "חסרים פרטים" : "ממתינה לאישור"}
+          {latest.missing.length > 0 ? ` · חסר: ${latest.missing.join(", ")}` : ""}
+        </p>
+      ) : (
+        <p>עדיין לא נשלחה בקשה מהחשבון הזה.</p>
+      )}
+      <form className="auth-form" action={submitApplication}>
+        <input type="hidden" name="role" value="creator" />
+        <label htmlFor="join-name">
+          שם
+          <input id="join-name" name="name" required minLength={2} />
+        </label>
+        <label htmlFor="join-email">
+          אימייל
+          <input id="join-email" name="email" type="email" defaultValue={access.email ?? ""} required />
+        </label>
+        <button className="button-publish" type="submit">
+          עדכון הבקשה
+        </button>
+      </form>
+    </>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <main className="shell">
+      <Suspense fallback={<p className="status">טוען…</p>}>
+        <OnboardingContent />
+      </Suspense>
+    </main>
+  );
+}

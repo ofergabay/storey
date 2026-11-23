@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>storey. · אב-טיפוס דף הבית והניווט</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #30244b;
+      --paper: #faf8ff;
+      --card: #fffcff;
+      --line: #d7d0e8;
+      --accent: #6249ca;
+      --muted: #51456f;
+      --soft: #efeafd;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Heebo, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    button, a { font: inherit; }
+    button { cursor: pointer; }
+    .chrome {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 16px;
+      overflow-x: auto;
+      background: var(--ink);
+      color: white;
+    }
+    .chrome p { margin: 0; font-size: 13px; white-space: nowrap; }
+    .chrome nav { display: flex; flex: 0 0 auto; gap: 6px; }
+    .chrome button, .tier button, .quiet {
+      border: 1px solid transparent;
+      border-radius: 999px;
+      background: transparent;
+      color: inherit;
+    }
+    .chrome button { padding: 6px 12px; color: white; border-color: rgba(255,255,255,.28); }
+    .chrome button[aria-pressed="true"] { background: white; color: var(--ink); }
+    .view { display: none; }
+    .view.active { display: block; }
+    .wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+    .site-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 22px 0 8px;
+    }
+    .wordmark { color: var(--ink); font-weight: 700; font-size: 28px; text-decoration: none; letter-spacing: -0.04em; }
+    .site-nav, .site-actions, .tier { display: flex; align-items: center; gap: 8px; }
+    .site-nav a, .text-link { color: var(--ink); text-decoration: none; white-space: nowrap; }
+    .site-nav a { padding: 8px 10px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 12px;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: white;
+      text-decoration: none;
+    }
+    .btn.ghost { background: transparent; color: var(--ink); }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 40px;
+      align-items: center;
+      padding: 36px 0 20px;
+    }
+    .kicker { margin: 0 0 8px; color: var(--accent); font-weight: 500; }
+    h1 { margin: 0; font-size: 44px; line-height: 1.2; letter-spacing: -0.03em; }
+    .lede { max-width: 38rem; font-size: 18px; color: var(--muted); }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 16px 22px; align-items: center; }
+    .preview, .plan, .pane, .matrix-wrap, .dict {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+    }
+    .preview { padding: 22px; }
+    .preview h2 { margin: 0 0 4px; font-size: 22px; }
+    .seller { margin: 0 0 16px; color: var(--muted); }
+    .money { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .money li, .steps li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+    }
+    .money .profit { color: var(--accent); font-weight: 700; }
+    .fine, .note { color: var(--muted); font-size: 14px; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 12px 0 36px; padding: 0; list-style: none; }
+    .steps li { display: block; border: 0; padding: 0; }
+    .steps strong { display: block; margin-bottom: 4px; }
+    .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding-bottom: 48px; }
+    .plan { padding: 22px; display: flex; flex-direction: column; gap: 8px; }
+    .plan.popular { border-color: var(--ink); background: white; }
+    .badge {
+      align-self: flex-start;
+      margin: 0;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .plan h2 { margin: 8px 0 0; font-size: 26px; }
+    .price { margin: 0; font-size: 18px; }
+    .plan ul { margin: 8px 0 16px; padding: 0 18px 0 0; }
+    .plan li { margin: 7px 0; }
+    .plan .btn, .plan .ghost { margin-top: auto; }
+    .workspace { width: min(1180px, calc(100% - 24px)); margin: 20px auto 40px; display: grid; grid-template-columns: 270px 1fr; gap: 18px; }
+    .side, .pane { background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
+    .side { padding: 16px; }
+    .side h2 { margin: 12px 8px; font-size: 18px; }
+    .tier { margin: 8px; }
+    .tier button, .quiet { padding: 6px 10px; border-color: var(--line); color: var(--ink); }
+    .tier button[aria-pressed="true"], .menu button[aria-pressed="true"] { background: var(--ink); color: white; }
+    .menu { display: grid; gap: 4px; }
+    .menu button {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      text-align: right;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--ink);
+    }
+    .tag { font-size: 12px; color: var(--muted); }
+    .menu button[aria-pressed="true"] .tag { color: #ddd6f5; }
+    .pane { padding: 28px; min-height: 460px; }
+    .pane h2 { margin: 0 0 8px; font-size: 32px; }
+    .key { display: inline-block; margin-bottom: 12px; direction: ltr; font-family: ui-monospace, monospace; font-size: 13px; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; background: var(--card); }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; }
+    th { font-size: 13px; font-weight: 500; color: var(--muted); }
+    .dict, .matrix-wrap { width: min(1180px, calc(100% - 24px)); margin: 20px auto 40px; overflow-x: auto; }
+    .intro { width: min(800px, calc(100% - 32px)); margin: 24px auto 0; }
+    code { direction: ltr; unicode-bidi: isolate; font-family: ui-monospace, monospace; font-size: 12px; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); font-size: 12px; white-space: nowrap; }
+    .full { background: #e7f6ee; }
+    .viewonly { background: var(--paper); }
+    .gated { background: var(--soft); }
+    .masked { background: #fff4df; }
+    .none { background: #f6e8ee; color: #6d3144; }
+    @media (max-width: 900px) {
+      .hero, .plans, .steps, .workspace { grid-template-columns: 1fr; }
+      h1 { font-size: 34px; }
+      .site-header { display: grid; grid-template-columns: 1fr auto; align-items: center; }
+      .site-nav { grid-column: 1 / -1; overflow-x: auto; }
+      .chrome p { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="chrome">
+    <p>אב-טיפוס מקומי. לא משנה את האפליקציה ואין בו חיוב.</p>
+    <nav aria-label="תצוגות האב-טיפוס">
+      <button type="button" data-view="landing" aria-pressed="true">דף הבית</button>
+      <button type="button" data-view="creator">יוצר/ת</button>
+      <button type="button" data-view="supplier">ספק ומחסן</button>
+      <button type="button" data-view="admin">ניהול</button>
+      <button type="button" data-view="copy">מילון</button>
+      <button type="button" data-view="matrix">הרשאות</button>
+    </nav>
+  </div>
+
+  <section id="landing" class="view active">
+    <div class="wrap">
+      <header class="site-header">
+        <a class="wordmark" href="#landing" dir="ltr">storey.</a>
+        <nav class="site-nav" aria-label="ניווט ציבורי">
+          <a href="#plans">מסלולים</a>
+          <a href="#how">איך זה עובד</a>
+          <a href="#supplier">הצטרפות כספק</a>
+        </nav>
+        <div class="site-actions">
+          <a class="text-link" href="#login">התחברות</a>
+          <a class="btn" href="#register">הרשמה ליוצרים</a>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div>
+          <p class="kicker">ליוצרים</p>
+          <h1>קובעים את המחיר. משתפים קישור. המשלוח עלינו.</h1>
+          <p class="lede">בוחרים מוצר מקטלוג סיטונאי, רואים את העלות ואת הרווח, ומפרסמים קישור. הספק אורז ושולח. אתם לא מחזיקים מלאי.</p>
+          <div class="hero-actions">
+            <a class="btn" href="#register">פתיחת חשבון יוצר/ת בחינם</a>
+            <a class="text-link" id="supplier" href="#supplier">יש לך מחסן או מותג? הצטרפות כספק</a>
+          </div>
+        </div>
+        <aside class="preview" aria-label="דוגמה לקישור של יוצר">
+          <p class="kicker">דוגמה לקישור</p>
+          <h2>ערכת יום הולדת</h2>
+          <p class="seller" dir="ltr">@creator</p>
+          <ul class="money">
+            <li><span>עלות מוצר</span><b dir="ltr">₪24</b></li>
+            <li><span>מחיר מכירה</span><b dir="ltr">₪65</b></li>
+            <li class="profit"><span>הרווח שלכם</span><b dir="ltr">₪41</b></li>
+          </ul>
+          <p class="fine">המספרים להמחשה בלבד. המחיר שתפרסמו הוא שלכם, והעלות נשארת אצלכם.</p>
+        </aside>
+      </section>
+
+      <section id="how">
+        <h2>איך זה עובד</h2>
+        <ol class="steps">
+          <li><strong>1. בוחרים מוצר</strong> מתוך קטלוג שהספק כבר מאחסן.</li>
+          <li><strong>2. קובעים מחיר</strong> ורואים את הרווח לפני שהקישור עולה.</li>
+          <li><strong>3. משתפים</strong> בסטורי, בוואטסאפ או בחנות שלכם.</li>
+        </ol>
+      </section>
+
+      <section id="plans" class="plans" aria-label="מסלולים">
+        <article class="plan">
+          <h2>מסלול לינקים</h2>
+          <p class="price">חינם להתחלה</p>
+          <ul>
+            <li>קישור אישי לכל מוצר</li>
+            <li>מלאי משותף שנארז ונשלח עבורכם</li>
+            <li>עלות ורווח גלויים לפני הפרסום</li>
+            <li>בלי חנות ובלי שמירת מלאי</li>
+          </ul>
+          <a class="btn" href="#register">פתיחת חשבון</a>
+        </article>
+        <article class="plan popular">
+          <p class="badge">הכי פופולרי</p>
+          <h2>חנות ממותגת</h2>
+          <p class="price">בקרוב · השארת פרטים</p>
+          <ul>
+            <li>חנות עם השם שלכם</li>
+            <li>שמירת מלאי לקמפיין ל-72 שעות</li>
+            <li>חבילות ומבצעים</li>
+            <li>נפתח אחרי אישור מחיר וסליקה</li>
+          </ul>
+          <a class="btn ghost" href="#interest">השארת פרטים</a>
+        </article>
+        <article class="plan">
+          <h2>מותגים בצמיחה</h2>
+          <p class="price" dir="ltr">Scale · בקרוב</p>
+          <ul>
+            <li>מלאי שמור רק לכם במחסן</li>
+            <li>אריזה לפי המותג</li>
+            <li>תנאים שנקבעים בחוזה</li>
+            <li>נפתח עם חוזה ועם סליקה</li>
+          </ul>
+          <a class="btn ghost" href="#interest">השארת פרטים</a>
+        </article>
+      </section>
+    </div>
+  </section>
+
+  <section id="creator" class="view">
+    <div class="workspace">
+      <aside class="side">
+        <p class="kicker">סביבת יוצר/ת</p>
+        <div class="tier" role="group" aria-label="מסלול">
+          <button type="button" data-tier="links" aria-pressed="true">לינקים</button>
+          <button type="button" data-tier="brand" aria-pressed="false">חנות</button>
+          <button type="button" data-tier="scale" aria-pressed="false">צמיחה</button>
+        </div>
+        <h2>תפריט</h2>
+        <div id="creator-menu" class="menu"></div>
+      </aside>
+      <article class="pane" id="creator-pane"></article>
+    </div>
+  </section>
+
+  <section id="supplier" class="view">
+    <div class="workspace">
+      <aside class="side">
+        <p class="kicker">סביבת ספק</p>
+        <div class="tier" role="group" aria-label="תפקיד במחסן">
+          <button type="button" data-supply="owner" aria-pressed="true">ספק</button>
+          <button type="button" data-supply="warehouse" aria-pressed="false">מחסן</button>
+        </div>
+        <h2>תפריט</h2>
+        <div id="supplier-menu" class="menu"></div>
+      </aside>
+      <article class="pane" id="supplier-pane"></article>
+    </div>
+  </section>
+
+  <section id="admin" class="view">
+    <div class="workspace">
+      <aside class="side">
+        <p class="kicker">ניהול מערכת</p>
+        <h2>תפריט</h2>
+        <div id="admin-menu" class="menu"></div>
+      </aside>
+      <article class="pane" id="admin-pane"></article>
+    </div>
+  </section>
+
+  <section id="copy" class="view">
+    <div class="intro">
+      <h2>מילון מיקרו-קופי</h2>
+      <p>הניסוח החדש מדבר אל יוצר/ת ואל ספק. מילים פנימיות של מערכת לא מופיעות במסך הציבורי.</p>
+    </div>
+    <div class="dict">
+      <table>
+        <thead>
+          <tr><th>עכשיו במסך</th><th>הניסוח החדש</th><th>למה</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>מוכרת חברתית</td><td>מסלול לינקים</td><td>שם מסלול ניטרלי, בלי מגדר ובלי תרגום של Social Seller.</td></tr>
+          <tr><td>חנות מותג</td><td>חנות ממותגת</td><td>חנות עם השם של היוצר/ת, לא חנות של המותג הסיטונאי.</td></tr>
+          <tr><td>שותפת קנה מידה</td><td>מותגים בצמיחה</td><td>עברית עסקית. Scale נשאר בתווית המחיר, לא בשם.</td></tr>
+          <tr><td>0 ₪</td><td>חינם להתחלה</td><td>ההטבה מובנת בלי לקרוא מספר.</td></tr>
+          <tr><td>מחיר לא הוגדר</td><td>בקרוב · השארת פרטים</td><td>אין מחירון מאושר. לא מציגים הודעת מערכת.</td></tr>
+          <tr><td>בלי טיוטה</td><td>הקישור מוכן לשיתוף</td><td>טיוטה היא מצב עריכה, לא הבטחה ללקוח.</td></tr>
+          <tr><td>ההפעלה ממתינה למחיר מאושר ולספק סליקה</td><td>נפתח אחרי אישור מחיר וסליקה</td><td>אותו תנאי, בשפה של מסלול ולא של לוג.</td></tr>
+          <tr><td>המודעה הפעילה של Cloud Nine</td><td>דוגמה לקישור</td><td>הדוגמה במסך היא המחשה. מחיר Cloud Nine שפורסם נשאר ₪60.</td></tr>
+          <tr><td>תפקידי פיתוח</td><td>הוסר מהכותרת הציבורית</td><td>החלפת תפקיד נשארת רק בניהול, תחת הרשאות.</td></tr>
+          <tr><td>הרשמה כיוצר/ת · הצטרפות כספק · כניסה</td><td>כפתור אחד בולט, וקישור שקט לספק</td><td>ההתחברות עוברת לכותרת. הספק לא מתחרה בכפתור הראשי.</td></tr>
+          <tr><td>מכירה בקישור</td><td>ליוצרים</td><td>כותרת משנה קצרה, לא שם פיצ'ר.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="matrix" class="view">
+    <div class="intro">
+      <h2>מטריצת הרשאות</h2>
+      <p>העמודה מתארת את ההרשאה המיועדת. פריטים שקיימים היום באפליקציה מסומנים. סליקה, חשבונית ודומיין עדיין לא חיים.</p>
+    </div>
+    <div class="matrix-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>פריט</th><th>מפתח</th><th>לינקים</th><th>חנות ממותגת</th><th>מותגים בצמיחה</th><th>ספק</th><th>מחסן</th><th>ניהול</th>
+          </tr>
+        </thead>
+        <tbody id="matrix-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <script>
+    const accessLabel = {
+      full: ["גישה מלאה", "full"],
+      view: ["צפייה", "viewonly"],
+      gated: ["לפי מסלול", "gated"],
+      masked: ["פרטים מוסתרים", "masked"],
+      none: ["אין גישה", "none"],
+      hidden: ["מוסתר", "none"]
+    };
+
+    const creatorItems = [
+      ["קטלוג", "catalog.browse", "בוחרים מוצר מהקטלוג הסיטונאי. העלות נראית רק ליוצר/ת.", { links: "full", brand: "full", scale: "full" }, "קיים"],
+      ["תמחור וקישור", "listing.price", "שומרים מחיר ומפרסמים קישור. טיוטה לא מופיעה בקישור הציבורי.", { links: "full", brand: "full", scale: "full" }, "קיים"],
+      ["חבילות", "bundle.edit", "מאחדים כמה מוצרים לקישור אחד.", { links: "gated", brand: "full", scale: "full" }, "יעד"],
+      ["חנות משלי", "storefront.edit", "שם, אוסף ומדיניות החזרות. הדומיין ממתין לאימות ולא נפתח לבד.", { links: "gated", brand: "full", scale: "full" }, "קיים"],
+      ["שמירה ל-72 שעות", "campaign.hold", "שומרים מלאי לקמפיין. במסלול לינקים אין שמירה.", { links: "gated", brand: "full", scale: "full" }, "קיים"],
+      ["מלאי ייעודי", "stock.dedicated", "תא במחסן ששמור רק למותג. לא מופיע במסלול לינקים.", { links: "hidden", brand: "gated", scale: "full" }, "יעד"],
+      ["הזמנות", "orders.read", "הזמנות של הקישורים שלכם, בלי פרטי מחסן פנימיים.", { links: "view", brand: "view", scale: "view" }, "קיים"],
+      ["החזרות", "returns.request", "מבקשים החזרה. הבדיקה וההחלטה על המלאי אצל המחסן.", { links: "view", brand: "view", scale: "view" }, "קיים"],
+      ["הכנסות", "earnings.read", "רואים רווח מחושב. העברה לחשבון חסומה עד שיהיה ספק סליקה.", { links: "masked", brand: "masked", scale: "masked" }, "קיים"],
+      ["חשבון", "account.manage", "פרטי חשבון וצוות. חיוב כרטיס לא פעיל.", { links: "full", brand: "full", scale: "full" }, "קיים"]
+    ];
+
+    const supplierItems = [
+      ["תור ליקוט ואריזה", "fulfillment.queue", "ליקוט, אריזה, מדבקה ושליחה. במותג בצמיחה מופיעה התראת אריזה לפי המותג.", { owner: "full", warehouse: "full" }, "קיים"],
+      ["מדבקה בלי פרטי יוצר", "label.blind", "על המדבקה יש יעד למשלוח, בלי רווח ובלי מחיר יוצר. רכישת המדבקה אצל חברת השילוח עדיין חיצונית.", { owner: "masked", warehouse: "masked" }, "יעד"],
+      ["קטלוג סיטונאי", "catalog.wholesale", "מק\"טים, עלות ומארז. המחסן רואה מה לארוז, לא את תנאי המסחר.", { owner: "full", warehouse: "view" }, "קיים"],
+      ["סנכרון מלאי", "stock.sync", "קליטת ספירה. פער נשאר פתוח ולא נסגר לבד.", { owner: "full", warehouse: "view" }, "קיים"],
+      ["תאים ייעודיים", "bins.dedicated", "מלאי ששמור למותג אחד. לא נמכר מקישור של יוצר/ת אחר.", { owner: "full", warehouse: "view" }, "יעד"],
+      ["החזרות ובדיקה", "returns.qc", "קבלה, ואז החלטה: חזרה למלאי, הסגר או אובדן.", { owner: "view", warehouse: "full" }, "קיים"],
+      ["התחשבנות", "settlements.read", "עלות שנסגרה. אין העברה לבנק מתוך המסך.", { owner: "view", warehouse: "none" }, "קיים"],
+      ["חשבוניות", "invoices.read", "חשבונית ספק. לא מופקת עד שיהיה חיבור הנהלת חשבונות.", { owner: "masked", warehouse: "none" }, "יעד"]
+    ];
+
+    const adminItems = [
+      ["לוח בקרה", "admin.home", "כניסה לניהול. אין כאן החלפת תפקיד ציבורית.", "full", "קיים"],
+      ["ייבוא קטלוג", "catalog.import", "קליטת קובץ מוצרים בנפרד מקובץ מלאי. אישור שורה הוא צעד נפרד.", "full", "קיים"],
+      ["העשרה ועברית", "catalog.enrich", "כותרת, תיאור ושפת תצוגה. תמונה עולה רק עם זכויות.", "full", "יעד"],
+      ["אישורי ספק ויוצר", "kyc.approve", "בקשה שהפרטים שלה חסרים לא מאושרת.", "full", "קיים"],
+      ["מסלולים ומחירים", "plans.rules", "מסלול לינקים הוא 0. לחנות ולצמיחה אין מחיר עד אישור.", "full", "קיים"],
+      ["ספר תנועות", "ledger.read", "התאמה ופיצול. אין העברת כסף חיה.", "masked", "קיים"],
+      ["חריגות וסכסוכים", "disputes.override", "פתיחת סכסוך חוסמת זיכוי נוסף. שחרור רק מכאן.", "full", "יעד"],
+      ["הרשאות", "roles.manage", "מחליף את תפקידי הפיתוח. לא מופיע בכותרת הציבורית.", "full", "יעד"]
+    ];
+
+    const matrixRows = [
+      ["קטלוג מוצרים", "catalog.browse", "full", "full", "full", "full", "view", "full"],
+      ["תמחור וקישור", "listing.price", "full", "full", "full", "none", "none", "view"],
+      ["חבילות", "bundle.edit", "gated", "full", "full", "none", "none", "view"],
+      ["חנות משלי", "storefront.edit", "gated", "full", "full", "none", "none", "view"],
+      ["שמירה ל-72 שעות", "campaign.hold", "gated", "full", "full", "view", "view", "view"],
+      ["מלאי ייעודי", "stock.dedicated", "hidden", "gated", "full", "full", "view", "view"],
+      ["הזמנות של היוצר/ת", "orders.read", "view", "view", "view", "none", "none", "full"],
+      ["תור ליקוט", "fulfillment.queue", "none", "none", "none", "full", "full", "view"],
+      ["מדבקה", "label.blind", "none", "none", "none", "masked", "masked", "masked"],
+      ["החזרות ובדיקה", "returns.qc", "view", "view", "view", "view", "full", "full"],
+      ["הכנסות והתחשבנות", "earnings.read", "masked", "masked", "masked", "view", "none", "masked"],
+      ["חשבוניות", "invoices.read", "none", "none", "none", "masked", "none", "masked"],
+      ["ייבוא ואישור קטלוג", "catalog.import", "none", "none", "none", "none", "none", "full"],
+      ["אישורי זהות", "kyc.approve", "none", "none", "none", "none", "none", "full"],
+      ["הרשאות", "roles.manage", "none", "none", "none", "none", "none", "full"]
+    ];
+
+    const state = { view: "landing", tier: "links", supply: "owner", creator: 0, supplier: 0, admin: 0 };
+
+    function pill(level) {
+      const [label, cls] = accessLabel[level];
+      return `<span class="pill ${cls}">${label}</span>`;
+    }
+
+    function show(view) {
+      state.view = view;
+      document.querySelectorAll(".view").forEach((node) => node.classList.toggle("active", node.id === view));
+      document.querySelectorAll(".chrome button").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.view === view)));
+    }
+
+    function renderCreator() {
+      const menu = document.querySelector("#creator-menu");
+      const visible = creatorItems.filter((item) => item[3][state.tier] !== "hidden");
+      menu.innerHTML = visible.map((item, index) => {
+        const level = item[3][state.tier];
+        return `<button type="button" data-index="${index}" aria-pressed="${index === state.creator}">
+          <span>${item[0]}</span>${pill(level)}
+        </button>`;
+      }).join("");
+      const item = visible[state.creator] || visible[0];
+      document.querySelector("#creator-pane").innerHTML = `
+        <p class="kicker">${item[4]}</p>
+        <h2>${item[0]}</h2>
+        <p class="key">${item[1]}</p>
+        <p>${item[2]}</p>
+        <p>${pill(item[3][state.tier])}</p>`;
+      menu.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => { state.creator = Number(button.dataset.index); renderCreator(); });
+      });
+    }
+
+    function renderSupplier() {
+      const menu = document.querySelector("#supplier-menu");
+      menu.innerHTML = supplierItems.map((item, index) => `
+        <button type="button" data-index="${index}" aria-pressed="${index === state.supplier}">
+          <span>${item[0]}</span>${pill(item[3][state.supply])}
+        </button>`).join("");
+      const item = supplierItems[state.supplier];
+      document.querySelector("#supplier-pane").innerHTML = `
+        <p class="kicker">${item[4]} · ${state.supply === "owner" ? "ספק" : "מחסן"}</p>
+        <h2>${item[0]}</h2>
+        <p class="key">${item[1]}</p>
+        <p>${item[2]}</p>
+        <p>${pill(item[3][state.supply])}</p>`;
+      menu.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => { state.supplier = Number(button.dataset.index); renderSupplier(); });
+      });
+    }
+
+    function renderAdmin() {
+      const menu = document.querySelector("#admin-menu");
+      menu.innerHTML = adminItems.map((item, index) => `
+        <button type="button" data-index="${index}" aria-pressed="${index === state.admin}">
+          <span>${item[0]}</span>${pill(item[3])}
+        </button>`).join("");
+      const item = adminItems[state.admin];
+      document.querySelector("#admin-pane").innerHTML = `
+        <p class="kicker">${item[4]}</p>
+        <h2>${item[0]}</h2>
+        <p class="key">${item[1]}</p>
+        <p>${item[2]}</p>
+        <p>${pill(item[3])}</p>
+        <p class="note">תפקידי פיתוח לא מופיעים כאן ולא בכותרת הציבורית.</p>`;
+      menu.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => { state.admin = Number(button.dataset.index); renderAdmin(); });
+      });
+    }
+
+    document.querySelector("#matrix-body").innerHTML = matrixRows.map((row) => `
+      <tr>
+        <td>${row[0]}</td>
+        <td><code>${row[1]}</code></td>
+        ${row.slice(2).map((level) => `<td>${pill(level)}</td>`).join("")}
+      </tr>`).join("");
+
+    document.querySelectorAll(".chrome button").forEach((button) => {
+      button.addEventListener("click", () => show(button.dataset.view));
+    });
+    document.querySelectorAll("[data-tier]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.tier = button.dataset.tier;
+        state.creator = 0;
+        document.querySelectorAll("[data-tier]").forEach((node) => node.setAttribute("aria-pressed", String(node === button)));
+        renderCreator();
+      });
+    });
+    document.querySelectorAll("[data-supply]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.supply = button.dataset.supply;
+        document.querySelectorAll("[data-supply]").forEach((node) => node.setAttribute("aria-pressed", String(node === button)));
+        renderSupplier();
+      });
+    });
+
+    renderCreator();
+    renderSupplier();
+    renderAdmin();
+  </script>
+</body>
+</html>
