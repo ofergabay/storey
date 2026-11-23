@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Wordmark } from "@/components/wordmark";
 import { LISTING_PATH } from "@/lib/cloud-nine-public";
 import { CLOUD_NINE_SELLER } from "@/lib/cloud-nine-seller";
 
@@ -14,9 +15,7 @@ export function SellerShell({
   return (
     <div className="shell">
       <header className="topbar">
-        <Link href="/" className="wordmark" dir="ltr">
-          storey.
-        </Link>
+        <Wordmark href="/" />
         <span className="tier">{CLOUD_NINE_SELLER.tierLabel}</span>
       </header>
       <nav className="nav" aria-label="ניווט בסטודיו">

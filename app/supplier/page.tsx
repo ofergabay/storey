@@ -26,8 +26,8 @@ async function QueueContent() {
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">{access.role === "warehouse" ? "תור מחסן" : "תור אספקה"}</h1>
-      <p className="hint">המדבקה היא מספר פיתוח. אין רכישת משלוח אצל חברת שילוח.</p>
+      <h1 className="page-title">תור ליקוט ואריזה</h1>
+      <p className="hint">המדבקה מסתירה את זהות הספק. אין כאן רכישת משלוח, ומחיר המכירה ללקוח לא מוצג.</p>
       {open.length === 0 ? <p className="status">אין הזמנות בתור.</p> : null}
       <div className="catalog-list">
         {open.map((order) => (
@@ -59,7 +59,7 @@ async function QueueContent() {
       {delivered.map((order) => (
         <form key={order.id} action={simulateDelivery}>
           <input type="hidden" name="id" value={order.id} />
-          <button className="button-secondary" type="submit">אישור מסירה מדומה {order.id}</button>
+          <button className="button-secondary" type="submit">סימון כנמסר</button>
         </form>
       ))}
     </>

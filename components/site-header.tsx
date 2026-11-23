@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signOutSeller } from "@/lib/auth-actions";
 import { isDevelopmentAdmin } from "@/lib/auth/admin";
+import { Wordmark } from "@/components/wordmark";
 
 export function SiteHeader({ email }: { email: string | null }) {
   const admin = isDevelopmentAdmin(email);
@@ -8,9 +9,7 @@ export function SiteHeader({ email }: { email: string | null }) {
   return (
     <header>
       <div className="topbar">
-        <Link href="/" className="wordmark" dir="ltr">
-          storey.
-        </Link>
+        <Wordmark href="/" />
       </div>
       <nav className="nav" aria-label="ניווט">
         {email ? <Link href="/catalog">קטלוג</Link> : <Link href="/register">הרשמה</Link>}

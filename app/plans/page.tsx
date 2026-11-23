@@ -12,7 +12,7 @@ async function PlansContent() {
     <>
       <RoleNav access={access} />
       <h1 className="page-title">תוכניות</h1>
-      <p>רק מוכרת חברתית נפתחת עכשיו, במחיר 0 ₪ ובלי חיוב.</p>
+      <p>כרגע נפתח רק מסלול מכירה חברתית, בלי חיוב.</p>
       <PlanCards />
     </>
   );

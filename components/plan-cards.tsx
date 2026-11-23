@@ -1,48 +1,27 @@
 import Link from "next/link";
+import { developmentPlans } from "@/lib/commerce/plans";
 
-const plans = [
-  {
-    name: "מוכרת חברתית",
-    summary: "פרסום קישור ומכירה מהמלאי המשותף.",
-    monthly: "₪0",
-    yearly: "₪0",
-    monthlyNote: "נפתחת בלי חיוב.",
-    yearlyNote: "₪0 לשנה",
-    features: ["קישור אישי לכל מוצר", "מכירה מהמלאי המשותף", "בלי קמפיין ובלי מלאי ייעודי"],
-    action: "הרשמה כיוצר/ת",
-    href: "/register",
-    popular: false,
+const presentation = {
+  social: {
+    summary: "קישור לשיתוף בוואטסאפ, ומכירה מהקטלוג המשותף בלי לקנות מלאי מראש.",
+    features: ["קישור אישי לכל מוצר", "מכירה מהמלאי המשותף", "בלי חנות פרטית ובלי שריון מלאי"],
+    action: "הרשמה בחינם",
   },
-  {
-    name: "חנות מותג",
-    summary: "קמפיין וחנות עם השם שלכם.",
-    monthly: "בקרוב",
-    yearly: "בקרוב",
-    monthlyNote: "המחיר החודשי עדיין לא אושר.",
-    yearlyNote: "כשהמחיר יאושר, החיוב השנתי נמוך ב-20% מ-12 תשלומים חודשיים.",
-    features: ["חנות עם השם שלכם", "שמירת מלאי לקמפיין", "נפתח אחרי אישור מחיר וסליקה"],
+  branded: {
+    summary: "חנות עם השם שלכם, שריון מלאי לקמפיין, והנחה לכמות.",
+    features: ["חנות ודומיין משלכם", "שריון מלאי לקמפיין", "נפתח אחרי אישור מחיר וסליקה"],
     action: "השארת פרטים",
-    href: "/register",
-    popular: true,
   },
-  {
-    name: "שותפת קנה מידה",
-    summary: "מלאי ייעודי בנוסף לקמפיין.",
-    monthly: "בקרוב",
-    yearly: "בקרוב",
-    monthlyNote: "המחיר החודשי עדיין לא אושר.",
-    yearlyNote: "כשהמחיר יאושר, החיוב השנתי נמוך ב-20% מ-12 תשלומים חודשיים.",
-    features: ["מלאי שמור במחסן", "קמפיין וחנות", "נפתח עם חוזה ועם סליקה"],
+  scale: {
+    summary: "מלאי ששמור אצל הספק, אריזה לפי הסכם, ומחיר שותפות.",
+    features: ["מלאי שמור במחסן הספק", "אריזה ותנאים לפי הסכם", "חנות, קמפיין וקישורי מכירה"],
     action: "השארת פרטים",
-    href: "/register",
-    popular: false,
   },
-];
+} as const;
 
 export function PlanCards() {
   return (
-    <section className="plan-board" aria-label="מסלולים">
-      <h2 className="section-title">מסלולים</h2>
+    <div className="plan-board" aria-label="מסלולים">
       <div className="plan-billing" role="radiogroup" aria-label="אופן התשלום">
         <input className="plan-billing-input" id="plan-monthly" type="radio" name="plan-billing" defaultChecked />
         <label htmlFor="plan-monthly">תשלום חודשי</label>
@@ -53,34 +32,41 @@ export function PlanCards() {
         </label>
       </div>
       <div className="plan-grid">
-        {plans.map((plan) => (
-          <article className={plan.popular ? "card plan-card popular" : "card plan-card"} key={plan.name}>
-            <div className="copy">
-              {plan.popular ? <p className="plan-badge">הכי פופולרי</p> : null}
-              <h3 className="section-title">{plan.name}</h3>
-              <p className="hint">{plan.summary}</p>
-              <p className="plan-price price-month">
-                <strong dir="ltr">{plan.monthly}</strong>
-                <span>לחודש</span>
-              </p>
-              <p className="plan-price price-year">
-                <strong dir="ltr">{plan.yearly}</strong>
-                <span>לחודש</span>
-              </p>
-              <p className="hint price-month">{plan.monthlyNote}</p>
-              <p className="hint price-year">{plan.yearlyNote}</p>
-              <Link className={plan.popular ? "button-publish" : "button-secondary"} href={plan.href}>
-                {plan.action}
-              </Link>
-              <ul className="plan-features">
-                {plan.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
-                ))}
-              </ul>
-            </div>
-          </article>
-        ))}
+        {developmentPlans.map((plan) => {
+          const copy = presentation[plan.code];
+          const popular = plan.code === "branded";
+          const price = plan.priceAgorot === 0 ? "₪0" : "בקרוב";
+          const monthlyNote = plan.priceAgorot === 0 ? "נפתח בלי חיוב." : "המחיר החודשי עדיין לא אושר.";
+          const yearlyNote = plan.priceAgorot === 0 ? "₪0 לשנה" : "כשהמחיר יאושר, החיוב השנתי נמוך ב-20% מ-12 תשלומים חודשיים.";
+          return (
+            <article className={popular ? "card plan-card popular" : "card plan-card"} key={plan.code}>
+              <div className="copy">
+                {popular ? <p className="plan-badge">הכי פופולרי</p> : null}
+                <h3 className="section-title">{plan.nameHe}</h3>
+                <p className="hint">{copy.summary}</p>
+                <p className="plan-price price-month">
+                  <strong dir="ltr">{price}</strong>
+                  <span>לחודש</span>
+                </p>
+                <p className="plan-price price-year">
+                  <strong dir="ltr">{price}</strong>
+                  <span>לחודש</span>
+                </p>
+                <p className="hint price-month">{monthlyNote}</p>
+                <p className="hint price-year">{yearlyNote}</p>
+                <Link className={popular ? "button-publish" : "button-secondary"} href="/register">
+                  {copy.action}
+                </Link>
+                <ul className="plan-features">
+                  {copy.features.map((feature) => (
+                    <li key={feature}>{feature}</li>
+                  ))}
+                </ul>
+              </div>
+            </article>
+          );
+        })}
       </div>
-    </section>
+    </div>
   );
 }

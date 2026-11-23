@@ -1,4 +1,5 @@
 import { ProductArt } from "@/components/product-art";
+import { Wordmark } from "@/components/wordmark";
 
 export function PublicListing({
   title,
@@ -28,9 +29,7 @@ export function PublicListing({
   return (
     <article className="customer-card">
       <header className="topbar customer-topbar">
-        <span className="wordmark" dir="ltr">
-          storey.
-        </span>
+        <Wordmark />
       </header>
       <ProductArt sticker={pack} />
       <div className="copy">

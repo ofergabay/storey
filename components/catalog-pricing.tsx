@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { ProductArt } from "@/components/product-art";
+import { Wordmark } from "@/components/wordmark";
 import { publishCatalogPrice, saveCatalogDraft, setCatalogSalePaused } from "@/lib/catalog/actions";
 import { offerActionLabel, offerControls, packEarnings } from "@/lib/catalog/offer";
 import type { PolicyVersion } from "@/lib/commerce/payment/flag";
@@ -433,9 +434,7 @@ export function CatalogPricing({
       >
         <article className="customer-card">
           <header className="topbar customer-topbar">
-            <span className="wordmark" dir="ltr">
-              storey.
-            </span>
+            <Wordmark />
             <button className="button-secondary preview-close" type="button" onClick={() => setPreview(false)}>
               סגירה
             </button>

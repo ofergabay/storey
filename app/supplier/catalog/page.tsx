@@ -16,7 +16,8 @@ async function OffersContent() {
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">הצעות ספק</h1>
+      <h1 className="page-title">המלאי והקטלוג שלי</h1>
+      <p className="hint">מוצג הקטלוג המאושר של החשבון הזה. מחיר המכירה ללקוח וקטלוגים של ספקים אחרים לא מוצגים.</p>
       {products.length === 0 ? <p className="status">אין הצעות מאושרות. תוצאות הייבוא מופיעות בתור הבדיקה.</p> : null}
       <ul>
         {products.map((product) => (

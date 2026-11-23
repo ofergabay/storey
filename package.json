@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test tests/commerce.test.ts tests/workflows.test.ts tests/catalog-admin.test.ts tests/catalog-offer.test.ts tests/workspace.test.ts tests/inventory-sql.test.ts tests/payment-workflow.test.ts tests/payment-db.test.ts"
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/commerce.test.ts tests/workflows.test.ts tests/catalog-admin.test.ts tests/catalog-offer.test.ts tests/permissions.test.ts tests/workspace.test.ts tests/inventory-sql.test.ts tests/payment-workflow.test.ts tests/payment-db.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

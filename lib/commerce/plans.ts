@@ -12,7 +12,7 @@ export type PlanVersion = {
 export const developmentPlans: PlanVersion[] = [
   {
     code: "social",
-    nameHe: "מוכרת חברתית",
+    nameHe: "מכירה חברתית",
     priceAgorot: 0,
     canPublish: true,
     canCampaign: false,
@@ -28,7 +28,7 @@ export const developmentPlans: PlanVersion[] = [
   },
   {
     code: "scale",
-    nameHe: "שותפת קנה מידה",
+    nameHe: "שותפות",
     priceAgorot: null,
     canPublish: true,
     canCampaign: true,
@@ -47,10 +47,19 @@ export type Subscription = {
 export type SellerPlanView = {
   installed: boolean;
   canPublish: boolean;
+  code: PlanCode;
   nameHe: string;
   priceAgorot: number | null;
   organizationName: string | null;
 };
+
+export function planCodeFromName(nameHe: string): PlanCode {
+  const named = developmentPlans.find((plan) => plan.nameHe === nameHe);
+  if (named) return named.code;
+  if (nameHe.includes("שותפ")) return "scale";
+  if (nameHe.includes("מותג")) return "branded";
+  return "social";
+}
 
 const hour = 60 * 60 * 1000;
 export const PAST_DUE_BLOCK_MS = 72 * hour;
@@ -60,6 +69,7 @@ export function developmentPlanView(): SellerPlanView {
   return {
     installed: false,
     canPublish: true,
+    code: social.code,
     nameHe: social.nameHe,
     priceAgorot: social.priceAgorot,
     organizationName: "מאיה לוי",

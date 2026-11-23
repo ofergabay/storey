@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { CheckoutForm } from "@/components/checkout-form";
+import { Wordmark } from "@/components/wordmark";
 import { LISTING_PATH, publicMetaDescription } from "@/lib/cloud-nine-public";
 import { listCities } from "@/lib/israel-places";
 import { readPublicCard } from "@/lib/listing-records";
@@ -72,9 +73,7 @@ export default function CheckoutPage() {
     <main className="customer-shell">
       <article className="customer-card">
         <header className="topbar customer-topbar">
-          <span className="wordmark" dir="ltr">
-            storey.
-          </span>
+          <Wordmark />
         </header>
         <Suspense fallback={null}>
           <RequestMarker />

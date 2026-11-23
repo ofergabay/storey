@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { QuoteSummary } from "@/components/quote-summary";
+import { Wordmark } from "@/components/wordmark";
 import { readCheckoutQuote } from "@/lib/read-checkout-quote";
 
 export const metadata: Metadata = {
@@ -27,9 +28,7 @@ export default function SavedQuotePage({ params }: { params: Promise<{ quoteId: 
     <main className="customer-shell">
       <article className="customer-card">
         <header className="topbar customer-topbar">
-          <span className="wordmark" dir="ltr">
-            storey.
-          </span>
+          <Wordmark />
         </header>
         <Suspense fallback={null}>
           <RequestMarker />

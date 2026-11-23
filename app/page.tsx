@@ -3,12 +3,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PlanCards } from "@/components/plan-cards";
 import { RoleNav } from "@/components/role-nav";
-import { LISTING_PATH } from "@/lib/cloud-nine-public";
+import { Wordmark } from "@/components/wordmark";
 import { readAccess } from "@/lib/auth/access";
+import { LISTING_PATH } from "@/lib/cloud-nine-public";
 
 export const metadata: Metadata = {
   title: "Storey",
-  description: "יוצרים בוחרים מוצר, קובעים מחיר ומשתפים קישור.",
+  description: "בוחרים מוצרים, קובעים מחיר ומתחילים למכור.",
 };
 
 async function HomeContent() {
@@ -16,36 +17,48 @@ async function HomeContent() {
 
   return (
     <>
-      <RoleNav access={access} />
-      <section className="card">
-        <div className="copy">
-          <p className="kicker">מכירה בקישור</p>
-          <h1 className="page-title">יוצרים בוחרים מוצר, קובעים מחיר ומשתפים קישור.</h1>
-          <p>בוחרים מוצר מהקטלוג, רואים את עלות המארז ואת הרווח, מפרסמים מחיר, ושולחים ללקוחות קישור בלי עלות ובלי טיוטה.</p>
-          <div className="home-actions">
-            <Link className="button-publish" href="/register">
-              הרשמה כיוצר/ת
-            </Link>
-            <Link className="button-secondary" href="/register/supplier">
-              הצטרפות כספק
-            </Link>
-            <Link className="button-secondary" href="/login">
-              כניסה
-            </Link>
-          </div>
-          <p className="hint">
-            <Link href={LISTING_PATH}>המודעה הפעילה של Cloud Nine</Link>
+      {access.role === "guest" ? (
+        <header className="topbar public-bar">
+          <Wordmark href="/" />
+          <Link className="login-pill" href="/login">
+            כניסה
+          </Link>
+        </header>
+      ) : (
+        <RoleNav access={access} />
+      )}
+      <section className="landing-hero">
+        <h1>בוחרים מוצרים, קובעים מחיר ומתחילים למכור</h1>
+        <p>יוצרים בוחרים מוצר וקובעים את המחיר. ספקים מאחסנים ושולחים. הלקוח קונה בקישור.</p>
+      </section>
+      <section className="audience-sheet">
+        <input className="audience-input" id="audience-creator" type="radio" name="audience" defaultChecked />
+        <input className="audience-input" id="audience-supplier" type="radio" name="audience" />
+        <div className="folders" role="tablist" aria-label="בחירת תפקיד">
+          <label htmlFor="audience-creator">יוצר/ת</label>
+          <label htmlFor="audience-supplier">ספק</label>
+        </div>
+        <div className="creator-view">
+          <PlanCards />
+          <p className="hint audience-note">
+            <Link href={LISTING_PATH}>מודעת דוגמה</Link>
           </p>
         </div>
+        <div className="supplier-view">
+          <h2>הצטרפות כספק</h2>
+          <p>המחסן שומר, מלקט ושולח. ההזמנות מגיעות לליקוט בלי לגייס לקוחות בעצמכם.</p>
+          <Link className="button-publish" href="/register/supplier">
+            הגשת בקשה להצטרפות כספק
+          </Link>
+        </div>
       </section>
-      <PlanCards />
     </>
   );
 }
 
 export default function HomePage() {
   return (
-    <main className="shell">
+    <main className="shell landing-shell">
       <Suspense fallback={<p className="status">טוען…</p>}>
         <HomeContent />
       </Suspense>

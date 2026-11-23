@@ -5,14 +5,14 @@ import { RoleNav } from "@/components/role-nav";
 import { readAccess } from "@/lib/auth/access";
 import { setDevRole } from "@/lib/auth/dev-role";
 
-export const metadata: Metadata = { title: "תפקידי פיתוח", description: "החלפת תפקיד לבדיקה מקומית." };
+export const metadata: Metadata = { title: "הרשאות ותפקידים", description: "החלפת תפקיד לבדיקה מקומית." };
 
 const roles = [
   ["guest", "אורח", "/"],
   ["creator", "יוצר/ת", "/studio"],
   ["supplier", "ספק", "/supplier"],
   ["warehouse", "מחסן", "/supplier"],
-  ["admin", "ניהול", "/admin"],
+  ["admin", "ניהול מערכת", "/admin"],
 ] as const;
 
 async function DevContent() {
@@ -21,8 +21,8 @@ async function DevContent() {
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">תפקידי פיתוח</h1>
-      <p>הבחירה נשמרת בעוגייה מקומית לשמונה שעות ומחליפה את החשבון המחובר רק בסביבת הפיתוח. אין כאן חיוב ואין ספירת מחסן חיה.</p>
+      <h1 className="page-title">הרשאות ותפקידים</h1>
+      <p>הבחירה נשמרת בדפדפן לשמונה שעות ומחליפה את החשבון המחובר רק במחשב הפיתוח. אין כאן חיוב ואין ספירת מחסן חיה.</p>
       <div className="home-actions">
         {roles.map(([role, label]) => (
           <form key={role} action={setDevRole.bind(null, role)}>

@@ -15,7 +15,7 @@ async function AdminContent({ searchParams }: { searchParams: Promise<{ notice?:
   const [access, query] = await Promise.all([readAccess(), searchParams]);
   if (access.role === "guest") redirect("/login?next=/admin");
   if (access.role !== "admin") return <Denied access={access} />;
-  const notice = query.notice === "stock" ? "הספירה התקינה הוחלה. זו ספירת פיתוח, לא אישור מחסן." : query.notice;
+  const notice = query.notice === "stock" ? "הספירה התקינה הוחלה. זו ספירה לבדיקה, לא אישור מחסן." : query.notice;
 
   return (
     <>
@@ -47,7 +47,7 @@ async function AdminContent({ searchParams }: { searchParams: Promise<{ notice?:
             עדכון מלאי
           </h2>
           <p>מעלים ספירה מוחלטת לפי מק״ט ומחסן. ספירה ישנה, כפולה עם תוכן אחר, חור ברצף או כמות מתחת לשמירות פתוחות לא משנה את המלאי. חור ברצף או חוסר מול שמירה עוצר את המכירה.</p>
-          <p className="hint">זו ספירת פיתוח. היא אינה אישור מחסן חי.</p>
+          <p className="hint">זו ספירה לבדיקה. היא אינה אישור מחסן חי.</p>
           <p>
             <a href="/samples/stock.csv" download>
               הורדת CSV לדוגמה

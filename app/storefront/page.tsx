@@ -1,8 +1,11 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Denied, RoleNav } from "@/components/role-nav";
 import { readAccess } from "@/lib/auth/access";
+import { creatorAccess } from "@/lib/auth/permissions";
+import { readSellerPlan } from "@/lib/seller-plan";
 import { saveStorefront } from "@/lib/workspace/actions";
 import { readWorkspace } from "@/lib/workspace/store";
 
@@ -12,11 +15,22 @@ async function StorefrontEditor() {
   const access = await readAccess();
   if (access.role === "guest") redirect("/login?next=/storefront");
   if (access.role !== "creator" && access.role !== "admin") return <Denied access={access} />;
+  const plan = await readSellerPlan();
+  const level = access.role === "admin" ? "FULL_ACCESS" : creatorAccess(plan.code, "creator.storefront");
   const current = readWorkspace().storefronts.find((item) => item.sellerId === access.userId);
   return (
     <>
       <RoleNav access={access} />
       <h1 className="page-title">חנות מותג</h1>
+      {level !== "FULL_ACCESS" ? (
+        <>
+          <p className="status">חנות ודומיין משלכם נפתחים במסלול חנות מותג. המסלול {plan.nameHe} עדיין לא כולל אותם.</p>
+          <Link className="button-secondary" href="/plans">
+            לשדרוג המסלול
+          </Link>
+        </>
+      ) : (
+      <>
       <p className="hint">דומיין מותאם לא אומת. החנות הציבורית נשארת בנתיב של Storey.</p>
       <form className="auth-form" action={saveStorefront}>
         <label htmlFor="collection">
@@ -31,6 +45,8 @@ async function StorefrontEditor() {
           שמירת החנות
         </button>
       </form>
+      </>
+      )}
     </>
   );
 }

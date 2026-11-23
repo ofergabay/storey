@@ -1,69 +1,33 @@
 import Link from "next/link";
 import { signOutSeller } from "@/lib/auth-actions";
 import { landingFor, type Access } from "@/lib/auth/access";
-
-const links: Record<Access["role"], { href: string; label: string }[]> = {
-  guest: [
-    { href: "/register", label: "הרשמה כיוצר/ת" },
-    { href: "/register/supplier", label: "הצטרפות כספק" },
-    { href: "/login", label: "כניסה" },
-    { href: "/plans", label: "תוכניות" },
-  ],
-  creator: [
-    { href: "/studio", label: "סטודיו" },
-    { href: "/catalog", label: "קטלוג" },
-    { href: "/listings", label: "המודעות שלי" },
-    { href: "/campaigns", label: "קמפיינים" },
-    { href: "/storefront", label: "חנות" },
-    { href: "/orders", label: "הזמנות" },
-    { href: "/earnings", label: "הכנסות" },
-    { href: "/account", label: "חשבון" },
-  ],
-  supplier: [
-    { href: "/supplier", label: "תור אספקה" },
-    { href: "/supplier/catalog", label: "הצעות" },
-    { href: "/supplier/stock", label: "מלאי" },
-    { href: "/supplier/returns", label: "החזרות" },
-    { href: "/supplier/settlements", label: "התחשבנות" },
-    { href: "/supplier/settings", label: "הגדרות" },
-  ],
-  warehouse: [
-    { href: "/supplier", label: "תור מחסן" },
-    { href: "/supplier/stock", label: "ספירות" },
-    { href: "/supplier/returns", label: "קבלת החזרות" },
-  ],
-  admin: [
-    { href: "/admin", label: "לוח בקרה" },
-    { href: "/admin/staging", label: "תור בדיקה" },
-    { href: "/admin/approvals", label: "אישורים" },
-    { href: "/admin/catalog", label: "קטלוג שפורסם" },
-    { href: "/admin/orders", label: "הזמנות" },
-    { href: "/admin/finance", label: "כספים" },
-    { href: "/admin/plans", label: "תוכניות" },
-    { href: "/admin/audit", label: "ביקורת" },
-  ],
-};
+import { navigationFor } from "@/lib/auth/permissions";
+import { Wordmark } from "@/components/wordmark";
 
 export function RoleNav({ access }: { access: Access }) {
+  const items = navigationFor(access.role, process.env.NODE_ENV === "development");
   return (
     <header>
       <div className="topbar">
-        <Link href={landingFor(access.role)} className="wordmark" dir="ltr">
-          storey.
-        </Link>
+        <Wordmark href={landingFor(access.role)} />
+        {access.role !== "guest" ? (
+          <form action={signOutSeller}>
+            <button className="login-pill" type="submit">
+              יציאה
+            </button>
+          </form>
+        ) : (
+          <Link className="login-pill" href="/login">
+            כניסה
+          </Link>
+        )}
       </div>
       <nav className="nav" aria-label="ניווט">
-        {links[access.role].map((link) => (
+        {items.map((link) => (
           <Link key={link.href} href={link.href}>
             {link.label}
           </Link>
         ))}
-        {process.env.NODE_ENV === "development" ? <Link href="/dev">תפקידי פיתוח</Link> : null}
-        {access.role !== "guest" ? (
-          <form action={signOutSeller}>
-            <button type="submit">יציאה</button>
-          </form>
-        ) : null}
       </nav>
     </header>
   );

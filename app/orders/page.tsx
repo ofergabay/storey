@@ -4,6 +4,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Denied, RoleNav } from "@/components/role-nav";
 import { readAccess } from "@/lib/auth/access";
+import { creatorAccess } from "@/lib/auth/permissions";
+import { readSellerPlan } from "@/lib/seller-plan";
 import { sellerHandleFromEmail } from "@/lib/catalog/identity";
 import { formatShekels } from "@/lib/money";
 import { readWorkspace } from "@/lib/workspace/store";
@@ -19,7 +21,8 @@ async function OrdersContent() {
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">הזמנות</h1>
+      <h1 className="page-title">הזמנות והחזרות</h1>
+      <PrivacyNote role={access.role} />
       {orders.length === 0 ? <p className="status">אין הזמנות עדיין.</p> : null}
       <div className="catalog-list">
         {orders.map((order) => (
@@ -29,7 +32,7 @@ async function OrdersContent() {
                 {order.status === "held"
                   ? "שמירה פתוחה"
                   : order.status === "sandbox_paid"
-                    ? "רכישת ארגז פיתוח"
+                    ? "שולם בסביבת בדיקה"
                     : order.status === "picking"
                       ? "בליקוט"
                       : order.status === "packed"
@@ -48,6 +51,13 @@ async function OrdersContent() {
       </div>
     </>
   );
+}
+
+async function PrivacyNote({ role }: { role: "creator" | "admin" }) {
+  if (role === "admin") return null;
+  const plan = await readSellerPlan();
+  if (creatorAccess(plan.code, "creator.orders") !== "MASKED_PII") return null;
+  return <p className="hint">פרטי הקשר של הלקוח מוסתרים במסלול {plan.nameHe}.</p>;
 }
 
 export default function OrdersPage() {
