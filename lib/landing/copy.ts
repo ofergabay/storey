@@ -114,9 +114,9 @@ export const landingCopy = {
 export const menuLinks = [
   { href: "/login", key: "login" },
   { href: "/register", key: "signup" },
-  { href: "#channel-selection", key: "plans" },
-  { href: "#inventory", key: "catalog" },
-  { href: "#faq", key: "faq" },
+  { href: "/#channel-selection", key: "plans" },
+  { href: "/#inventory", key: "catalog" },
+  { href: "/#faq", key: "faq" },
   { href: "/register/supplier", key: "supplierJoin" },
 ] as const;
 
@@ -183,9 +183,36 @@ export const channels = [
   },
 ] as const;
 
-export const footerLinks = [
-  { href: "#inventory", he: "לקטלוג", en: "Catalog" },
-  { href: "#channels", he: "למסלולים", en: "Plans" },
-  { href: "#faq", he: "שאלות נפוצות", en: "FAQ" },
-  { href: "/register/supplier", he: "הצטרפות כספקים", en: "Apply as a supplier" },
+export const footerColumns = [
+  {
+    title: "footerCompany",
+    links: [
+      { href: "/", he: "אודות", en: "About" },
+      { href: "#inventory", he: "לקטלוג", en: "Catalog" },
+      { href: "/register/supplier", he: "הצטרפות כספקים", en: "Apply as a supplier" },
+    ],
+  },
+  {
+    title: "footerSocial",
+    links: [
+      { href: "#faq", he: "שאלות נפוצות", en: "FAQ" },
+      { href: "/login", he: "כניסה", en: "Log in" },
+    ],
+  },
+  {
+    title: "footerLegal",
+    links: [
+      { href: "/legal/terms", he: "תנאי שימוש", en: "Terms" },
+      { href: "/legal/privacy", he: "פרטיות", en: "Privacy" },
+      { href: "/legal/accessibility", he: "נגישות", en: "Accessibility" },
+    ],
+  },
+  {
+    title: "footerProduct",
+    links: [
+      { href: "#channels", he: "למסלולים", en: "Plans" },
+      { href: "#faq", he: "השכלה", en: "Learn" },
+      { href: "#inventory", he: "לחקור", en: "Explore" },
+    ],
+  },
 ] as const;

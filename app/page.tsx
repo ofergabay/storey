@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { PublicLanding } from "@/components/landing/public-landing";
 import { landingFor, readAccess } from "@/lib/auth/access";
 import { parseSelectedChannel } from "@/lib/landing/copy";
+import { readLocale } from "@/lib/i18n/server";
 import { readLandingFaq } from "@/lib/landing/faq";
 
 export const metadata: Metadata = {
@@ -16,7 +17,7 @@ async function HomeContent({
 }: {
   searchParams: Promise<{ preview?: string; channel?: string; auth?: string; error?: string }>;
 }) {
-  const [access, query] = await Promise.all([readAccess(), searchParams]);
+  const [access, query, locale] = await Promise.all([readAccess(), searchParams, readLocale()]);
   const preview = access.role === "admin" && query.preview === "1";
   if (!preview) {
     const destination = landingFor(access.role);
@@ -30,6 +31,7 @@ async function HomeContent({
       initialChannel={parseSelectedChannel(query.channel)}
       initialAuth={query.auth === "register" ? "register" : query.auth === "login" ? "login" : null}
       authError={query.error === "google" ? "google" : null}
+      initialLocale={locale}
     />
   );
 }

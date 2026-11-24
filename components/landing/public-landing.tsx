@@ -7,7 +7,10 @@ import { Wordmark } from "@/components/wordmark";
 import { ChannelSelection } from "@/components/landing/channel-selection";
 import { deleteLandingFaq, moveLandingFaq, saveLandingFaq } from "@/lib/landing/faq-actions";
 import type { AuthIntent } from "@/lib/auth/oauth";
-import { channels, footerLinks, landingCopy, menuLinks, selectedChannelForBlock, type LandingLocale, type SelectedChannel } from "@/lib/landing/copy";
+import { ChannelGallery } from "@/components/landing/channel-gallery";
+import { channels, footerColumns, landingCopy, menuLinks, selectedChannelForBlock, type LandingLocale, type SelectedChannel } from "@/lib/landing/copy";
+import { channelVisuals } from "@/lib/landing/channel-visuals";
+import { localeCookie } from "@/lib/i18n/locale";
 import type { FaqItem } from "@/lib/landing/faq";
 import { showcaseItems, showcaseProfit, type ShowcaseMotif } from "@/lib/landing/showcase";
 import { formatShekels } from "@/lib/money";
@@ -125,14 +128,16 @@ export function PublicLanding({
   initialChannel = null,
   initialAuth = null,
   authError = null,
+  initialLocale = "he",
 }: {
   faqs: FaqItem[];
   canEditFaq: boolean;
   initialChannel?: SelectedChannel | null;
   initialAuth?: AuthIntent | null;
   authError?: string | null;
+  initialLocale?: LandingLocale;
 }) {
-  const [locale, setLocale] = useState<LandingLocale>("he");
+  const [locale, setLocale] = useState<LandingLocale>(initialLocale ?? "he");
   const [selectedChannel, setSelectedChannel] = useState<SelectedChannel | null>(initialChannel);
   const [menuOpen, setMenuOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(initialAuth !== null);
@@ -146,15 +151,9 @@ export function PublicLanding({
   const direction = locale === "he" ? "rtl" : "ltr";
 
   useEffect(() => {
-    const root = document.documentElement;
-    const previousLang = root.lang;
-    const previousDir = root.dir;
-    root.lang = locale === "he" ? "he" : "en";
-    root.dir = direction;
-    return () => {
-      root.lang = previousLang;
-      root.dir = previousDir;
-    };
+    document.cookie = localeCookie(locale);
+    document.documentElement.lang = locale === "he" ? "he" : "en";
+    document.documentElement.dir = direction;
   }, [direction, locale]);
 
   useEffect(() => {
@@ -244,6 +243,10 @@ export function PublicLanding({
                 >
                   {text[item.key]}
                 </button>
+              ) : item.href.includes("#") ? (
+                <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>
+                  {text[item.key]}
+                </a>
               ) : (
                 <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>
                   {text[item.key]}
@@ -290,41 +293,35 @@ export function PublicLanding({
           <h2>{text.engineTitle}</h2>
           <p>{text.engineBody}</p>
         </div>
-        {channels.map((channel) => (
+        {channels.map((channel) => {
+          const visual = channelVisuals[channel.id];
+          return (
           <article className={`channel-block channel-${channel.id}`} key={channel.id}>
-            <div className="storey-wrap">
-              <p className="storey-eyebrow">
-                <span aria-hidden="true">{channel.icon}</span> {channel.eyebrow[locale]}
-              </p>
-              <h2>{channel.title[locale]}</h2>
-              <p className="channel-body">{channel.body[locale]}</p>
-              <ul>
-                {channel.bullets.map((bullet) => (
-                  <li key={bullet.he}>
-                    <span aria-hidden="true">{bullet.icon}</span>
-                    {bullet[locale]}
-                  </li>
-                ))}
-              </ul>
-              <div className={`channel-mock mock-${channel.id}`} aria-hidden="true">
-                <div className="mock-top">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-                <strong>{channel.title[locale]}</strong>
-                <div className="mock-lines">
-                  <i />
-                  <i />
-                  <i />
-                </div>
+            <div className="storey-wrap channel-layout">
+              <div className="channel-copy">
+                <p className="storey-eyebrow">
+                  <span aria-hidden="true">{channel.icon}</span> {channel.eyebrow[locale]}
+                </p>
+                <h2>{channel.title[locale]}</h2>
+                <p className="channel-body">{channel.body[locale]}</p>
               </div>
+              <figure className="channel-visual">
+                <ChannelGallery id={channel.id} slides={visual} locale={locale} label={channel.title[locale]} />
+                <figcaption>
+                  <ul className="channel-kpis">
+                    {channel.bullets.map((bullet) => (
+                      <li key={bullet.he}>{bullet[locale]}</li>
+                    ))}
+                  </ul>
+                </figcaption>
+              </figure>
               <button className="storey-cta" type="button" onClick={() => chooseChannel(selectedChannelForBlock(channel.id), true)}>
                 {text.start}
               </button>
             </div>
           </article>
-        ))}
+          );
+        })}
       </section>
 
       <ChannelSelection
@@ -442,14 +439,19 @@ export function PublicLanding({
       </section>
 
       <footer className="storey-footer" id="footer">
-        <div className="storey-wrap">
-          <ul>
-            {footerLinks.map((item) => (
-              <li key={item.href}>
-                <a href={item.href}>{locale === "he" ? item.he : item.en}</a>
-              </li>
-            ))}
-          </ul>
+        <div className="storey-wrap storey-footer-grid">
+          {footerColumns.map((column) => (
+            <section key={column.title}>
+              <h2>{text[column.title]}</h2>
+              <ul>
+                {column.links.map((item) => (
+                  <li key={`${column.title}-${item.href}-${item.he}`}>
+                    <a href={item.href}>{locale === "he" ? item.he : item.en}</a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
         </div>
         <div className="storey-wrap storey-footer-mark">
           <Wordmark href="/" />
