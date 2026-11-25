@@ -1,6 +1,7 @@
 import { acquireHold, emptyBook, releaseExpired, type Book } from "../inventory.ts";
 import { warehouseCheckout } from "../stock-gate.ts";
 import { recompute, type Allocation, type UnitSlice } from "./calculate.ts";
+import { WEEKLY_POLICY, type PolicyVersion } from "./flag.ts";
 import { allocateLargestRemainder } from "./round.ts";
 import { addLocalDays } from "./time.ts";
 
@@ -24,6 +25,7 @@ export type PayUnit = UnitSlice & {
 
 export type PayState = {
   id: string;
+  policyVersion: PolicyVersion;
   status: "quoted" | "checking" | "authorized" | "capture_unknown" | "captured" | "declined" | "voided";
   holdExpiresAt: number;
   attemptKey: string | null;
@@ -64,6 +66,7 @@ type Provider = {
 export function startFromAllocation(input: { id: string; allocation: Allocation; now: number }): PayState {
   return {
     id: input.id,
+    policyVersion: input.allocation.policyVersion,
     status: "quoted",
     holdExpiresAt: input.now + 10 * 60 * 1000,
     attemptKey: null,
@@ -125,6 +128,7 @@ export function openHeldQuote(input: {
     book: held.book,
     state: {
       id: input.id,
+      policyVersion: input.allocation.policyVersion,
       status: "quoted",
       holdExpiresAt: held.hold.expiresAt,
       attemptKey: null,
@@ -318,6 +322,25 @@ export function handoffUnit(state: PayState, input: { key: string; unitId: strin
   };
 }
 
+export function splitParcel(state: PayState, input: { key: string; unitId: string; parcelId: string }): CommandResult {
+  const hash = stable(input);
+  const gate = gateKey(state, input.key, hash);
+  if (gate === "replay") return { ok: true, state, replayed: true };
+  if (gate === "conflict") return { ok: false, code: "CONFLICT", state };
+  const unit = state.units.find((row) => row.id === input.unitId);
+  if (!unit || (unit.stage !== "handed" && unit.stage !== "committed")) return { ok: false, code: "STOPPED", state };
+  const charge = state.charge;
+  const freight = state.units.reduce((sum, row) => sum + row.buyerFreight, 0);
+  const next = stamp(state, input.key, hash, {
+    units: state.units.map((row) => (row.id === unit.id ? { ...row, parcelId: input.parcelId } : row)),
+    events: [...state.events, `split:${unit.id}`],
+  });
+  if (next.charge !== charge || next.units.reduce((sum, row) => sum + row.buyerFreight, 0) !== freight) {
+    return { ok: false, code: "AMOUNT", state };
+  }
+  return { ok: true, replayed: false, state: next };
+}
+
 export function markTransit(state: PayState, input: { key: string; parcelId: string }): CommandResult {
   const delivered = state.units.some((unit) => unit.parcelId === input.parcelId && (unit.stage === "delivered" || unit.stage === "returned"));
   if (delivered) return { ok: true, state, replayed: true };
@@ -329,7 +352,7 @@ export function deliverParcel(state: PayState, input: { key: string; parcelId: s
   const gate = gateKey(state, input.key, hash);
   if (gate === "replay") return { ok: true, state, replayed: true };
   if (gate === "conflict") return { ok: false, code: "CONFLICT", state };
-  const eligibleAt = addLocalDays(input.at, 7, "Asia/Jerusalem");
+  const eligibleAt = state.policyVersion === WEEKLY_POLICY ? input.at : addLocalDays(input.at, 7, "Asia/Jerusalem");
   let changed = false;
   const units = state.units.map((unit) => {
     if (unit.parcelId !== input.parcelId || unit.stage !== "handed") return unit;

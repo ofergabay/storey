@@ -29,7 +29,7 @@ export async function readAccess(): Promise<Access> {
 
 export function landingFor(role: AppRole): string {
   if (role === "admin") return "/admin/staging";
-  if (role === "supplier" || role === "warehouse") return "/supplier";
+  if (role === "supplier") return "/supplier";
   if (role === "creator") return "/earnings";
   return "/";
 }

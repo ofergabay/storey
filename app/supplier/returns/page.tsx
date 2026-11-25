@@ -1,23 +1,29 @@
+import { WorkspaceTitle } from "@/components/workspace-title";
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { Denied, RoleNav } from "@/components/role-nav";
-import { readAccess } from "@/lib/auth/access";
+import { openSurface } from "@/lib/auth/guards";
+import { supplierWarehouse } from "@/lib/auth/tenant";
 import { receiveReturn, reconcileReturn } from "@/lib/workspace/actions";
 import { readWorkspace } from "@/lib/workspace/store";
 
 export const metadata: Metadata = { title: "קבלת החזרות", description: "קבלה ובדיקה של החזרה." };
 
-async function ReturnsContent() {
-  const access = await readAccess();
-  if (access.role === "guest") redirect("/login?next=/supplier/returns");
-  if (access.role !== "supplier" && access.role !== "warehouse" && access.role !== "admin") return <Denied access={access} />;
+async function ReturnsContent({ searchParams }: { searchParams: Promise<{ inspect?: string }> }) {
+  const query = await searchParams;
+  const opened = await openSurface("supplier", "/supplier/returns", query.inspect);
+  if ("denied" in opened) return <Denied access={opened.denied} />;
+  const { access, readOnly } = opened;
+  const warehouse = supplierWarehouse(access);
   const workspace = readWorkspace();
-  const rows = workspace.returns;
+  const rows = workspace.returns.filter((row) => {
+    const order = workspace.orders.find((item) => item.id === row.orderId);
+    return readOnly || order?.warehouseCode === warehouse;
+  });
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">קבלת החזרות</h1>
+      <WorkspaceTitle he="קבלת החזרות" en="Incoming returns" />
       {rows.length === 0 ? <p className="status">אין החזרות שממתינות.</p> : null}
       <div className="catalog-list">
         {rows.map((row) => (
@@ -27,13 +33,13 @@ async function ReturnsContent() {
                 {row.quantity} מארזים ·{" "}
                 {row.status === "requested" ? "התבקשה" : row.status === "received" ? "התקבלה" : "הותאמה"}
               </p>
-              {row.status === "requested" ? (
+              {!readOnly && row.status === "requested" ? (
                 <form action={receiveReturn}>
                   <input type="hidden" name="id" value={row.id} />
                   <button className="button-publish" type="submit">קבלת ההחזרה</button>
                 </form>
               ) : null}
-              {row.status === "received" ? (
+              {!readOnly && row.status === "received" ? (
                 <form action={reconcileReturn}>
                   <input type="hidden" name="id" value={row.id} />
                   {workspace.orders.find((order) => order.id === row.orderId)?.paymentCaseId ? (
@@ -57,11 +63,11 @@ async function ReturnsContent() {
   );
 }
 
-export default function SupplierReturnsPage() {
+export default function SupplierReturnsPage({ searchParams }: { searchParams: Promise<{ inspect?: string }> }) {
   return (
     <main className="shell">
       <Suspense fallback={<p className="status">טוען…</p>}>
-        <ReturnsContent />
+        <ReturnsContent searchParams={searchParams} />
       </Suspense>
     </main>
   );

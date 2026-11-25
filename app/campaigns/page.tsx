@@ -1,25 +1,26 @@
+import { WorkspaceTitle } from "@/components/workspace-title";
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Denied, RoleNav } from "@/components/role-nav";
-import { readAccess } from "@/lib/auth/access";
+import { openSurface } from "@/lib/auth/guards";
 import { creatorAccess } from "@/lib/auth/permissions";
 import { readSellerPlan } from "@/lib/seller-plan";
 import { reserveCampaign } from "@/lib/workspace/actions";
 
 export const metadata: Metadata = { title: "קמפיינים", description: "שמירת מלאי לקמפיין." };
 
-async function CampaignsContent() {
-  const access = await readAccess();
-  if (access.role === "guest") redirect("/login?next=/campaigns");
-  if (access.role !== "creator") return <Denied access={access} />;
+async function CampaignsContent({ searchParams }: { searchParams: Promise<{ inspect?: string }> }) {
+  const query = await searchParams;
+  const opened = await openSurface("creator", "/campaigns", query.inspect);
+  if ("denied" in opened) return <Denied access={opened.denied} />;
+  const { access } = opened;
   const plan = await readSellerPlan();
   const level = creatorAccess(plan.code, "creator.campaign");
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">מלאי לקמפיין</h1>
+      <WorkspaceTitle he="מלאי לקמפיין" en="Campaign stock" />
       {level !== "FULL_ACCESS" ? (
         <>
           <p className="status">המסלול {plan.nameHe} עדיין לא כולל שמירת מלאי לקמפיין. לא נשמר מלאי.</p>
@@ -40,11 +41,11 @@ async function CampaignsContent() {
   );
 }
 
-export default function CampaignsPage() {
+export default function CampaignsPage({ searchParams }: { searchParams: Promise<{ inspect?: string }> }) {
   return (
     <main className="shell">
       <Suspense fallback={<p className="status">טוען…</p>}>
-        <CampaignsContent />
+        <CampaignsContent searchParams={searchParams} />
       </Suspense>
     </main>
   );

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { CartLine, ReturnCase, StagedItem, WorkOrder } from "@/lib/workspace/engine";
+import { pilotWorkspace } from "./pilot.ts";
 
 export type Application = {
   id: string;
@@ -10,6 +11,7 @@ export type Application = {
   status: "pending" | "approved" | "missing";
   missing: string[];
   plan?: "social" | "branded" | "scale";
+  warehouseCode?: string;
 };
 
 export type CampaignReserve = {
@@ -25,6 +27,10 @@ export type AuditEntry = {
   actor: string;
   action: string;
   detail: string;
+  role?: string;
+  beforeState?: string | null;
+  afterState?: string | null;
+  reason?: string;
 };
 
 export type WorkspaceDb = {
@@ -44,13 +50,21 @@ export function emptyWorkspace(): WorkspaceDb {
   return { staged: [], orders: [], returns: [], applications: [], campaigns: [], carts: [], storefronts: [], audit: [] };
 }
 
-export function readWorkspace(): WorkspaceDb {
+export function workspaceFromJson(raw: string): WorkspaceDb {
   try {
-    const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as Partial<WorkspaceDb>;
+    const parsed = JSON.parse(raw) as Partial<WorkspaceDb>;
     const empty = emptyWorkspace();
     return { ...empty, ...parsed, staged: parsed.staged ?? [], orders: parsed.orders ?? [], returns: parsed.returns ?? [] };
   } catch {
     return emptyWorkspace();
+  }
+}
+
+export function readWorkspace(file = filePath): WorkspaceDb {
+  try {
+    return workspaceFromJson(fs.readFileSync(file, "utf8"));
+  } catch {
+    return pilotWorkspace();
   }
 }
 

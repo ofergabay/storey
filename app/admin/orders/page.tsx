@@ -1,28 +1,28 @@
+import { WorkspaceTitle } from "@/components/workspace-title";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Denied, RoleNav } from "@/components/role-nav";
-import { readAccess } from "@/lib/auth/access";
+import { requireAdminPage } from "@/lib/auth/admin-gate";
 import { readWorkspace } from "@/lib/workspace/store";
 
 export const metadata: Metadata = { title: "הזמנות וחריגות", description: "הזמנות פיתוח והחזרות." };
 
 async function AdminOrders() {
-  const access = await readAccess();
-  if (access.role === "guest") redirect("/login?next=/admin/orders");
-  if (access.role !== "admin") return <Denied access={access} />;
+  const gate = await requireAdminPage("/admin/orders");
+  if (!gate.admin) return <Denied access={gate.access} />;
+  const access = gate.access;
   const workspace = readWorkspace();
   const exceptions = workspace.orders.filter((order) => order.status === "cancelled" || order.status === "held");
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">הזמנות וחריגות</h1>
+      <WorkspaceTitle he="הזמנות וחריגות" en="Orders and exceptions" />
       {workspace.orders.length === 0 ? <p className="status">אין הזמנות.</p> : null}
       <ul>
         {workspace.orders.map((order) => (
           <li key={order.id}>
-            {order.sku} · {order.status === "dispatched" ? "נשלח" : order.status === "cancelled" ? "בוטל" : order.status === "held" ? "שמירה פתוחה" : "בטיפול"} · <Link href={`/track/${order.token}`}>מעקב</Link>
+            {order.sku} · {order.status === "dispatched" ? "נשלח" : order.status === "cancelled" ? "בוטל" : order.status === "failed" ? "התשלום נכשל" : order.status === "held" ? "שמירה פתוחה" : "בטיפול"} · <Link href={`/track/${order.token}`}>מעקב</Link>
           </li>
         ))}
       </ul>

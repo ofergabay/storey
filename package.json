@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/commerce.test.ts tests/workflows.test.ts tests/catalog-admin.test.ts tests/catalog-offer.test.ts tests/permissions.test.ts tests/workspace.test.ts tests/inventory-sql.test.ts tests/payment-workflow.test.ts tests/payment-db.test.ts tests/auth-oauth.test.ts"
+    "test": "node --experimental-strip-types --test tests/commerce.test.ts tests/workflows.test.ts tests/catalog-admin.test.ts tests/catalog-offer.test.ts tests/permissions.test.ts tests/workspace.test.ts tests/inventory-sql.test.ts tests/payment-workflow.test.ts tests/payment-db.test.ts tests/weekly-policy.test.ts tests/auth-oauth.test.ts tests/auth-callback.test.ts tests/payme-contract.test.ts tests/experiments.test.ts tests/rbac-db.test.ts tests/route-policy.test.ts tests/channel-visuals.test.ts tests/pilot-data.test.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.17",
     "@electric-sql/pglite-socket": "^0.2.20",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -1,25 +1,27 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ProductArt } from "@/components/product-art";
 import { Denied, RoleNav } from "@/components/role-nav";
-import { readAccess } from "@/lib/auth/access";
+import { openSurface } from "@/lib/auth/guards";
+import { productUnavailableHe } from "@/lib/auth/oauth";
+import { pickCopy } from "@/lib/i18n/locale";
+import { readLocale } from "@/lib/i18n/server";
 import { sellableQuantity } from "@/lib/catalog/model";
 import { readCatalog } from "@/lib/catalog/store";
 import { PUBLIC_LISTING } from "@/lib/cloud-nine-public";
-import { CLOUD_NINE_SELLER } from "@/lib/cloud-nine-seller";
-import { formatShekels } from "@/lib/money";
 
 export const metadata: Metadata = {
   title: "קטלוג",
   description: "מוצרים מאושרים לתמחור.",
 };
 
-async function CatalogContent({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const [access, query] = await Promise.all([readAccess(), searchParams]);
-  if (access.role === "guest") redirect("/login?next=/catalog");
-  if (access.role !== "creator" && access.role !== "admin") return <Denied access={access} />;
+async function CatalogContent({ searchParams }: { searchParams: Promise<{ q?: string; inspect?: string; unavailable?: string }> }) {
+  const [query, locale] = await Promise.all([searchParams, readLocale()]);
+  const unavailable = query.unavailable === "1";
+  const opened = await openSurface("creator", "/catalog", query.inspect, { allowAdmin: unavailable });
+  if ("denied" in opened) return <Denied access={opened.denied} />;
+  const { access } = opened;
   const catalog = readCatalog();
   const q = (query.q ?? "").trim();
   const products = catalog.products.filter(
@@ -29,8 +31,9 @@ async function CatalogContent({ searchParams }: { searchParams: Promise<{ q?: st
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">קטלוג</h1>
-      <p>בוחרים מוצר מאושר, רואים את התמונה, את גודל המארז ואת העלות, ועוברים לקביעת מחיר.</p>
+      <h1 className="page-title">{pickCopy(locale, "קטלוג", "Catalog")}</h1>
+      {unavailable ? <p className="status" role="status">{productUnavailableHe}</p> : null}
+      <p>{pickCopy(locale, "בוחרים מוצר מאושר, רואים את התמונה ואת גודל המארז, וקובעים מחיר מכירה.", "Choose an approved product, see the photo and pack size, and set a selling price.")}</p>
       <form className="auth-form" action="/catalog">
         <label htmlFor="catalog-q">
           חיפוש
@@ -48,11 +51,7 @@ async function CatalogContent({ searchParams }: { searchParams: Promise<{ q?: st
             <p>
               {PUBLIC_LISTING.packSize} {PUBLIC_LISTING.packUnit}
             </p>
-            <p className="quote-line">
-              <span>עלות המארז</span>
-              <strong dir="ltr">{formatShekels(CLOUD_NINE_SELLER.wholesaleAgorot)}</strong>
-            </p>
-            <p className="hint">הספירה של המוצר הזה נשארת במסלול Cloud Nine הקיים.</p>
+            <p className="hint">הספירה של המוצר הזה נשארת במסלול Cloud Nine הקיים. מחיר המכירה נקבע בסטודיו.</p>
             <Link className="button-publish" href="/studio">
               בחירת מוצר
             </Link>
@@ -76,10 +75,6 @@ async function CatalogContent({ searchParams }: { searchParams: Promise<{ q?: st
                 <p>
                   {product.packSize} {product.unit}
                 </p>
-                <p className="quote-line">
-                  <span>עלות המארז</span>
-                  <strong dir="ltr">{formatShekels(product.costAgorot)}</strong>
-                </p>
                 <p className="hint">{stockLabel}</p>
                 <Link className="button-publish" href={`/catalog/${product.sku}`}>
                   בחירת מוצר
@@ -94,7 +89,7 @@ async function CatalogContent({ searchParams }: { searchParams: Promise<{ q?: st
   );
 }
 
-export default function CatalogPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default function CatalogPage({ searchParams }: { searchParams: Promise<{ q?: string; inspect?: string; unavailable?: string }> }) {
   return (
     <main className="shell">
       <Suspense fallback={<p className="status">טוען את הקטלוג…</p>}>

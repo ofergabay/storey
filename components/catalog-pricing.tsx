@@ -27,6 +27,7 @@ export function CatalogPricing({
   storefront,
   campaign,
   feePolicy,
+  rates,
 }: {
   sku: string;
   title: string;
@@ -45,6 +46,7 @@ export function CatalogPricing({
   storefront: boolean;
   campaign: boolean;
   feePolicy: PolicyVersion;
+  rates?: { supplierBps: number; creatorBps: number };
 }) {
   const suggested = Math.max(costAgorot, costAgorot + 1500);
   const opening = draftAgorot ?? (publishedAgorot > 0 ? publishedAgorot : suggested);
@@ -78,7 +80,7 @@ export function CatalogPricing({
   const currentAgorot = parsed.status === "priced" ? parsed.agorot : null;
   const profit = currentAgorot === null ? null : grossProfitAgorot(currentAgorot, costAgorot);
   const belowCost = profit !== null && profit < 0;
-  const earnings = currentAgorot !== null && !belowCost ? packEarnings(currentAgorot, costAgorot, feePolicy) : null;
+  const earnings = currentAgorot !== null && !belowCost ? packEarnings(currentAgorot, costAgorot, feePolicy, rates) : null;
   const priceSynced = currentAgorot !== null && currentAgorot === savedAgorot;
   const copySynced = headline.trim() === savedHeadline.trim() && recommendation.trim() === savedRecommendation.trim();
   const synced = priceSynced && copySynced;
@@ -257,14 +259,10 @@ export function CatalogPricing({
         <h1 className="page-title">{title}</h1>
         <p className="pack">{pack}</p>
         <p className="quote-line">
-          <span>עלות המארז</span>
-          <strong dir="ltr">{formatShekels(costAgorot)}</strong>
-        </p>
-        <p className="quote-line">
           <span>{earnings?.label ?? "מרווח לפני עמלות"}</span>
           <strong dir="ltr">{earnings?.amount ?? "—"}</strong>
         </p>
-        <p className="hint">{earnings?.hint ?? "ההפרש בין מחיר המכירה לעלות. עמלת היוצר/ת להצעה הזו עדיין לא נקבעה."}</p>
+        <p className="hint">{earnings?.hint ?? "ההפרש לפני עמלות. עמלת היוצר/ת להצעה הזו עדיין לא נקבעה."}</p>
         {liveAgorot > 0 && currentAgorot !== null && currentAgorot !== liveAgorot ? (
           <p className="hint">
             בעמוד המכירה {formatShekels(liveAgorot)} · בטיוטה {formatShekels(currentAgorot)}
@@ -305,7 +303,7 @@ export function CatalogPricing({
             </span>
           </label>
           {parsed.status === "invalid" ? <p className="status">המחיר לא תקין. הזינו מספר חיובי עם עד שתי ספרות אחרי הנקודה.</p> : null}
-          {belowCost ? <p className="status">אי אפשר לשמור מחיר שנמוך מעלות המארז.</p> : null}
+          {belowCost ? <p className="status">המחיר נמוך מכלל המרווח. לפני עמלות צריך להישאר אפס או יותר.</p> : null}
           <details className="sale-copy">
             <summary>עריכת פרטי המכירה</summary>
             <label htmlFor="buyer-headline">
@@ -430,6 +428,9 @@ export function CatalogPricing({
       <dialog
         className="offer-preview"
         ref={previewRef}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) setPreview(false);
+        }}
         onClose={() => setPreview(false)}
       >
         <article className="customer-card">

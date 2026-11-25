@@ -1,5 +1,5 @@
 import { priceQuote, testRates } from "../commerce/payment/calculate.ts";
-import { PAYMENT_POLICY, type PolicyVersion } from "../commerce/payment/flag.ts";
+import { PAYMENT_POLICY, WEEKLY_POLICY, type PolicyVersion } from "../commerce/payment/flag.ts";
 import { formatMarginRatio, formatShekelAfter, formatShekels } from "../money.ts";
 import { grossMarginRatio, grossProfitAgorot } from "../pricing.ts";
 
@@ -9,12 +9,25 @@ export type PackEarnings = {
   hint: string;
 };
 
-export function packEarnings(retailAgorot: number, wholesaleAgorot: number, policy: PolicyVersion): PackEarnings | null {
+export function packEarnings(
+  retailAgorot: number,
+  wholesaleAgorot: number,
+  policy: PolicyVersion,
+  rates?: { supplierBps: number; creatorBps: number },
+  fundedFreightAgorot = 0,
+): PackEarnings | null {
   if (retailAgorot <= 0 || retailAgorot < wholesaleAgorot) return null;
   const margin = grossProfitAgorot(retailAgorot, wholesaleAgorot);
   const ratio = grossMarginRatio(retailAgorot, wholesaleAgorot);
   const marginText = ratio === null ? formatShekelAfter(margin) : `${formatShekelAfter(margin)} (${formatMarginRatio(ratio)})`;
-  if (policy !== PAYMENT_POLICY) {
+  if (policy === WEEKLY_POLICY && !rates) {
+    return {
+      label: "מרווח לפני עמלות",
+      amount: marginText,
+      hint: "ההפרש בין מחיר המכירה לעלות. עמלת היוצר/ת להצעה הזו עדיין לא נקבעה.",
+    };
+  }
+  if (policy !== PAYMENT_POLICY && policy !== WEEKLY_POLICY) {
     return {
       label: "מרווח לפני עמלות",
       amount: marginText,
@@ -23,10 +36,11 @@ export function packEarnings(retailAgorot: number, wholesaleAgorot: number, poli
   }
   const quote = priceQuote({
     ...testRates(),
+    ...(policy === WEEKLY_POLICY && rates ? { supplierBps: rates.supplierBps, creatorBps: rates.creatorBps, policyVersion: WEEKLY_POLICY } : {}),
     discountAgorot: 0,
     buyerFeeAgorot: 0,
     pspFeeAgorot: 0,
-    services: [],
+    services: fundedFreightAgorot > 0 ? [{ id: "ship", buyerFreightAgorot: 0, supplierFreightAgorot: fundedFreightAgorot, packingAgorot: 0 }] : [],
     lines: [
       {
         id: "pack",
@@ -37,15 +51,26 @@ export function packEarnings(retailAgorot: number, wholesaleAgorot: number, poli
         unitRetailAgorot: retailAgorot,
         unitWholesaleAgorot: wholesaleAgorot,
         taxAgorot: 0,
-        serviceGroup: "pack",
+        serviceGroup: fundedFreightAgorot > 0 ? "ship" : "pack",
       },
     ],
   });
-  if (!quote.ok) return { label: "מרווח לפני עמלות", amount: marginText, hint: "ההפרש בין מחיר המכירה לעלות. עמלת היוצר/ת להצעה הזו עדיין לא נקבעה." };
+  if (!quote.ok) {
+    return {
+      label: "מרווח לפני עמלות",
+      amount: marginText,
+      hint: fundedFreightAgorot > 0 ? "ניכוי המשלוח מוריד את התמורה מתחת לאפס. אי אפשר לפרסם משלוח חינם בסכום הזה." : "ההפרש בין מחיר המכירה לעלות. עמלת היוצר/ת להצעה הזו עדיין לא נקבעה.",
+    };
+  }
+  const hint = fundedFreightAgorot > 0
+    ? "אחרי העמלה וניכוי משלוח על חשבון היוצר/ת."
+    : policy === WEEKLY_POLICY
+      ? "אחרי העמלה שפורסמה להצעות חדשות."
+      : "אחרי עמלת היוצר/ת במדיניות שחלה על ההצעה. שיעור הבדיקה אינו מחירון מאושר.";
   return {
     label: "הרווח הצפוי שלך למארז",
     amount: formatShekelAfter(quote.allocation.creatorPayable),
-    hint: "אחרי עמלת היוצר/ת במדיניות שחלה על ההצעה. שיעור הבדיקה אינו מחירון מאושר.",
+    hint,
   };
 }
 

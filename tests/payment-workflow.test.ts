@@ -5,7 +5,7 @@ import { HOLD_MS, emptyBook } from "../lib/commerce/inventory.ts";
 import { priceQuote, testRates, type QuoteInput, type QuoteLine } from "../lib/commerce/payment/calculate.ts";
 import { captureTestAdapter } from "../lib/commerce/payment/sandbox.ts";
 import { captureEvidence, recoverAcceptedCharge, unknownAfterAcceptance } from "../lib/commerce/payment/recover.ts";
-import { ORIGINAL_POLICY, PAYMENT_POLICY, paymentPolicyForNewQuotes, paymentPolicyForSeller } from "../lib/commerce/payment/flag.ts";
+import { ORIGINAL_POLICY, WEEKLY_POLICY, paymentPolicyForNewQuotes, paymentPolicyForSeller } from "../lib/commerce/payment/flag.ts";
 import { acceptBackorder, inspectUnit, localFulfillmentEvidence, offerBackorder, recordLocalEvidence, resolveBackorder } from "../lib/commerce/payment/workflow.ts";
 import { addLocalDays } from "../lib/commerce/payment/time.ts";
 import { buyerView, creatorView, supplierView } from "../lib/commerce/payment/views.ts";
@@ -119,7 +119,7 @@ test("the test adapter captures one pack without a live charge", () => {
 
 test("a cohort enrolls one seller in the same process and a stored policy survives the pause", () => {
   const open = { enabled: true, sellers: ["creator"] };
-  assert.equal(paymentPolicyForSeller("creator", open), PAYMENT_POLICY);
+  assert.equal(paymentPolicyForSeller("creator", open), WEEKLY_POLICY);
   assert.equal(paymentPolicyForSeller("maya", open), ORIGINAL_POLICY);
   const paused = { enabled: false, sellers: ["creator"] };
   assert.equal(paymentPolicyForSeller("creator", paused), ORIGINAL_POLICY);

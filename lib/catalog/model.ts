@@ -34,6 +34,7 @@ export type CreatorListing = {
   draftHeadline?: string;
   draftRecommendation?: string;
   paused?: boolean;
+  creatorFundsShipping?: boolean;
 };
 
 export type CatalogDb = {

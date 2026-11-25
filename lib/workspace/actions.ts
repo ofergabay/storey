@@ -3,22 +3,51 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { readAccess, type AppRole } from "@/lib/auth/access";
+import { adminPageDecision } from "@/lib/auth/admin-gate";
+import { onboardingDestination } from "@/lib/auth/oauth";
+import { appendAudit } from "@/lib/auth/audit";
+import { can, commitIfAllowed } from "@/lib/auth/can";
+import { supplierWarehouse } from "@/lib/auth/tenant";
 import { readCatalog, writeCatalog } from "@/lib/catalog/store";
 import { dispatchUnits, nextFulfillment, openReturn, releaseHold, reserveHold, type WorkOrder } from "@/lib/workspace/engine";
 import { policyForSeller } from "@/lib/commerce/payment/cohort";
-import { PAYMENT_POLICY } from "@/lib/commerce/payment/flag";
+import { PAYMENT_POLICY, WEEKLY_POLICY } from "@/lib/commerce/payment/flag";
 import { priceQuote, testRates } from "@/lib/commerce/payment/calculate";
+import { rateAt } from "@/lib/commerce/payment/commissions";
+import { readCommissions, readTariffs } from "@/lib/commerce/payment/policy-store";
+import { quoteListing } from "@/lib/commerce/payment/shipping-quote";
 import { crashBeforeConfirm, disarmCrash, readProviderCharges, writeProviderCharge } from "@/lib/commerce/payment/provider-store";
+import { readPaymeAttempt } from "@/lib/commerce/payment/payme/attempts";
+import { listingPreview } from "@/lib/experiments/share";
+import { sellerHandleFromEmail } from "@/lib/catalog/identity";
 import { recoverAcceptedCharge, unknownAfterAcceptance } from "@/lib/commerce/payment/recover";
 import { captureTwoSupplier } from "@/lib/commerce/payment/sandbox";
 import { readPaymentCases, writePaymentCase } from "@/lib/commerce/payment/store";
 import { acceptBackorder, claimTransfer, deliverParcel, handoffUnit, inspectUnit, markTransferred, offerBackorder, recordLocalEvidence, rejectBeforeHandoff, resolveBackorder } from "@/lib/commerce/payment/workflow";
 import { readWorkspace, writeWorkspace } from "@/lib/workspace/store";
+import { readSellerPlan } from "@/lib/seller-plan";
 
 function deny(role: AppRole, allowed: AppRole[]): string | null {
   if (role === "guest") return "צריך להתחבר.";
   if (!allowed.includes(role)) return "אין הרשאה לפעולה הזו.";
   return null;
+}
+
+function supplierMayFulfill(access: Awaited<ReturnType<typeof readAccess>>, warehouseCode: string | null | undefined): boolean {
+  return can(
+    { role: access.role, userId: access.userId, tenantId: supplierWarehouse(access), plan: null },
+    "supplier.fulfill",
+    { tenantId: warehouseCode ?? null },
+  ) === "FULL_ACCESS";
+}
+
+function attributionFrom(formData: FormData): WorkOrder["attribution"] {
+  const creator = String(formData.get("c") ?? "");
+  const offer = String(formData.get("o") ?? "");
+  const campaign = String(formData.get("k") ?? "");
+  const channel = String(formData.get("ch") ?? "");
+  if (!creator && !offer && !campaign && !channel) return null;
+  return { creator, offer, campaign, channel };
 }
 
 export async function saveCart(formData: FormData): Promise<void> {
@@ -37,11 +66,93 @@ export async function saveCart(formData: FormData): Promise<void> {
   redirect("/cart");
 }
 
+function paymentPolicyOrder(version: string | undefined): boolean {
+  return version === PAYMENT_POLICY || version === WEEKLY_POLICY;
+}
+
+async function beginWeeklyCheckout(formData: FormData, seller: string, slug: string, quantity: number): Promise<void> {
+  const back = `/s/${seller}/${slug}/checkout`;
+  const catalog = readCatalog();
+  const listing = catalog.listings.find((item) => item.sellerHandle === seller && item.slug === slug && item.retailAgorot > 0);
+  const product = listing ? catalog.products.find((item) => item.sku === listing.sku) : undefined;
+  if (!listing || !product || !Number.isInteger(quantity) || quantity < 1) redirect(`${back}?hold=missing`);
+  const owners = [...new Set(readTariffs().filter((rule) => rule.status === "published" && rule.warehouseCode === product.warehouseCode).map((rule) => rule.supplierId))];
+  if (owners.length !== 1) redirect(`${back}?hold=shipping`);
+  const supplierId = owners[0] ?? "unassigned";
+  const destination = {
+    postcode: String(formData.get("postcode") ?? ""),
+    city: String(formData.get("city") ?? ""),
+    zone: String(formData.get("zone") ?? ""),
+  };
+  const rate = rateAt(readCommissions().cards, Date.now());
+  const quoted = quoteListing({
+    supplierId,
+    warehouseCode: product.warehouseCode,
+    sku: product.sku,
+    quantity,
+    retailAgorot: listing.retailAgorot,
+    wholesaleAgorot: product.costAgorot,
+    destination,
+    rules: readTariffs(),
+    rate: rate ? { id: rate.id, supplierBps: rate.supplierBps, creatorBps: rate.creatorBps } : null,
+    at: Date.now(),
+    service: String(formData.get("service") ?? ""),
+    creatorFundsShipping: listing.creatorFundsShipping === true,
+  });
+  if (!quoted.ok || !quoted.snapshot || quoted.hash !== String(formData.get("quoteHash") ?? "")) {
+    const reason = quoted.reason === "no-service" || quoted.reason === "pickup-required" ? "shipping" : quoted.reason === "no-rate" ? "rate" : "stale";
+    redirect(`${back}?hold=${reason}`);
+  }
+  const reserved = reserveHold(catalog.stock, { sku: product.sku, warehouseCode: product.warehouseCode, quantity, now: Date.now() });
+  if (!reserved.ok) redirect(`${back}?hold=stock`);
+  const order: WorkOrder = {
+    id: `ord-${Date.now()}`,
+    token: `tok-${Date.now()}`,
+    sku: product.sku,
+    sellerHandle: seller,
+    quantity,
+    unitAgorot: listing.retailAgorot,
+    warehouseCode: product.warehouseCode,
+    status: "held",
+    holdExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    tracking: null,
+    policyVersion: WEEKLY_POLICY,
+    paymentCaseId: null,
+    paymentNote: null,
+    shippingSnapshot: quoted.snapshot,
+    attribution: attributionFrom(formData),
+    previewSale: await sellerPreview(seller, listing.sellerId),
+  };
+  const workspace = readWorkspace();
+  workspace.orders.unshift(order);
+  writeWorkspace(workspace);
+  writeCatalog({ ...catalog, stock: reserved.stock });
+  revalidatePath(`/track/${order.token}`);
+  redirect(`/track/${order.token}`);
+}
+
+async function sellerPreview(sellerHandle: string, sellerId: string): Promise<boolean> {
+  const access = await readAccess();
+  const viewerHandle = access.email || access.userId ? sellerHandleFromEmail(access.email ?? "", access.userId ?? "") : null;
+  return listingPreview({
+    previewQuery: false,
+    viewerRole: access.role,
+    viewerId: access.userId,
+    viewerHandle,
+    sellerId,
+    sellerHandle,
+  });
+}
+
 export async function beginListingCheckout(formData: FormData): Promise<void> {
   await releaseExpiredHolds();
   const seller = String(formData.get("seller") ?? "");
   const slug = String(formData.get("slug") ?? "");
   const quantity = Number(formData.get("quantity") ?? 1);
+  if (policyForSeller(seller) === WEEKLY_POLICY) {
+    await beginWeeklyCheckout(formData, seller, slug, quantity);
+    return;
+  }
   const catalog = readCatalog();
   const listing = catalog.listings.find((item) => item.sellerHandle === seller && item.slug === slug && item.retailAgorot > 0);
   const product = listing ? catalog.products.find((item) => item.sku === listing.sku) : undefined;
@@ -62,6 +173,8 @@ export async function beginListingCheckout(formData: FormData): Promise<void> {
     policyVersion: policyForSeller(seller),
     paymentCaseId: null,
     paymentNote: null,
+    attribution: attributionFrom(formData),
+    previewSale: await sellerPreview(seller, listing.sellerId),
   };
   const workspace = readWorkspace();
   workspace.orders.unshift(order);
@@ -76,7 +189,13 @@ export async function sandboxPurchase(formData: FormData): Promise<void> {
   const workspace = readWorkspace();
   const order = workspace.orders.find((item) => item.id === id && item.status === "held");
   if (!order) return;
-  if (order.policyVersion === PAYMENT_POLICY) {
+  if (readPaymeAttempt(order.id)) {
+    order.paymentNote = "יש ניסיון PayMe פתוח. לא נפתח מתאם אחר.";
+    writeWorkspace(workspace);
+    revalidatePath(`/track/${order.token}`);
+    return;
+  }
+  if (paymentPolicyOrder(order.policyVersion)) {
     const existingCharge = readProviderCharges().find((charge) => charge.orderId === order.id);
     if (existingCharge) {
       const existing = readPaymentCases().find((item) => item.state.id === order.id) ?? null;
@@ -94,7 +213,11 @@ export async function sandboxPurchase(formData: FormData): Promise<void> {
     const catalog = readCatalog();
     const product = catalog.products.find((item) => item.sku === order.sku);
     const now = Date.now();
-    const priced = priceQuote({
+    const priced = order.policyVersion === WEEKLY_POLICY
+      ? order.shippingSnapshot
+        ? { ok: true as const, allocation: order.shippingSnapshot.allocation }
+        : { ok: false as const }
+      : priceQuote({
       ...testRates(),
       lines: [
         {
@@ -168,12 +291,12 @@ export async function sandboxPurchase(formData: FormData): Promise<void> {
 
 export async function advanceOrder(formData: FormData): Promise<void> {
   const access = await readAccess();
-  if (deny(access.role, ["supplier", "warehouse", "admin"])) return;
+  if (deny(access.role, ["supplier"])) return;
   const id = String(formData.get("id") ?? "");
   const workspace = readWorkspace();
   const order = workspace.orders.find((item) => item.id === id);
-  if (!order) return;
-  if (order.policyVersion === PAYMENT_POLICY) {
+  if (!order || !supplierMayFulfill(access, order.warehouseCode)) return;
+  if (paymentPolicyOrder(order.policyVersion)) {
     const payment = readPaymentCases().find((item) => item.state.id === order.paymentCaseId);
     if (!payment || payment.state.status !== "captured") return;
   }
@@ -209,11 +332,12 @@ export async function requestOrderReturn(formData: FormData): Promise<void> {
 
 export async function receiveReturn(formData: FormData): Promise<void> {
   const access = await readAccess();
-  if (deny(access.role, ["supplier", "warehouse", "admin"])) return;
+  if (deny(access.role, ["supplier"])) return;
   const id = String(formData.get("id") ?? "");
   const workspace = readWorkspace();
   const item = workspace.returns.find((row) => row.id === id && row.status === "requested");
-  if (!item) return;
+  const returnOrder = item ? workspace.orders.find((row) => row.id === item.orderId) : undefined;
+  if (!item || !supplierMayFulfill(access, returnOrder?.warehouseCode)) return;
   item.status = "received";
   writeWorkspace(workspace);
   revalidatePath("/supplier/returns");
@@ -221,10 +345,11 @@ export async function receiveReturn(formData: FormData): Promise<void> {
 
 export async function reconcileReturn(formData: FormData): Promise<void> {
   const access = await readAccess();
-  if (deny(access.role, ["supplier", "warehouse", "admin"])) return;
+  if (deny(access.role, ["supplier"])) return;
   const id = String(formData.get("id") ?? "");
   const workspace = readWorkspace();
   const item = workspace.returns.find((row) => row.id === id && row.status === "received");
+  if (item && !supplierMayFulfill(access, workspace.orders.find((row) => row.id === item.orderId)?.warehouseCode)) return;
   const order = item ? workspace.orders.find((row) => row.id === item.orderId) : undefined;
   if (!item || !order || item.restore > 0) return;
   const disposition = String(formData.get("disposition") ?? "");
@@ -267,8 +392,9 @@ function paymentFor(orderId: string) {
 
 export async function offerLateSupply(formData: FormData): Promise<void> {
   const access = await readAccess();
-  if (deny(access.role, ["supplier", "warehouse", "admin"])) return;
+  if (deny(access.role, ["supplier"])) return;
   const id = String(formData.get("id") ?? "");
+  if (!supplierMayFulfill(access, readWorkspace().orders.find((order) => order.id === id)?.warehouseCode)) return;
   const payment = paymentFor(id);
   if (!payment) return;
   const deadline = Date.now() + 2 * 24 * 60 * 60 * 1000;
@@ -299,8 +425,9 @@ export async function answerBackorder(formData: FormData): Promise<void> {
 
 export async function timeoutBackorder(formData: FormData): Promise<void> {
   const access = await readAccess();
-  if (deny(access.role, ["supplier", "warehouse", "admin"])) return;
+  if (deny(access.role, ["supplier"])) return;
   const id = String(formData.get("id") ?? "");
+  if (!supplierMayFulfill(access, readWorkspace().orders.find((order) => order.id === id)?.warehouseCode)) return;
   const payment = paymentFor(id);
   const unitId = payment?.state.backorders?.find((row) => row.decision === "offered")?.unitId;
   if (!payment || !unitId) return;
@@ -313,8 +440,9 @@ export async function timeoutBackorder(formData: FormData): Promise<void> {
 
 export async function simulateDelivery(formData: FormData): Promise<void> {
   const access = await readAccess();
-  if (deny(access.role, ["supplier", "warehouse", "admin"])) return;
+  if (deny(access.role, ["supplier"])) return;
   const id = String(formData.get("id") ?? "");
+  if (!supplierMayFulfill(access, readWorkspace().orders.find((order) => order.id === id)?.warehouseCode)) return;
   const payment = paymentFor(id);
   if (!payment || payment.state.status !== "captured") return;
   let state = payment.state;
@@ -336,7 +464,7 @@ export async function simulateDelivery(formData: FormData): Promise<void> {
 
 export async function simulateEligibility(formData: FormData): Promise<void> {
   const access = await readAccess();
-  if (access.role !== "admin") return;
+  if (adminPageDecision(access.role) !== "allow") return;
   const id = String(formData.get("id") ?? "");
   const payment = paymentFor(id);
   if (!payment) return;
@@ -350,7 +478,7 @@ export async function simulateEligibility(formData: FormData): Promise<void> {
 
 export async function simulateTransfer(formData: FormData): Promise<void> {
   const access = await readAccess();
-  if (access.role !== "admin") return;
+  if (adminPageDecision(access.role) !== "allow") return;
   const id = String(formData.get("id") ?? "");
   const payment = paymentFor(id);
   if (!payment?.simulatedNow) return;
@@ -370,7 +498,7 @@ export async function simulateTransfer(formData: FormData): Promise<void> {
 
 export async function runTwoSupplierFixture(): Promise<void> {
   const access = await readAccess();
-  if (access.role !== "admin") return;
+  if (adminPageDecision(access.role) !== "allow") return;
   const now = Date.now();
   const captured = captureTwoSupplier(now);
   if (!captured.ok) return;
@@ -408,6 +536,7 @@ export async function submitApplication(formData: FormData): Promise<void> {
   const email = String(formData.get("email") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const planValue = String(formData.get("plan") ?? "");
+  const productId = String(formData.get("product") ?? "");
   const plan = role === "creator" && (planValue === "social" || planValue === "branded" || planValue === "scale") ? planValue : undefined;
   const workspace = readWorkspace();
   const missing = [];
@@ -425,23 +554,40 @@ export async function submitApplication(formData: FormData): Promise<void> {
   writeWorkspace(workspace);
   revalidatePath("/onboarding");
   revalidatePath("/admin/approvals");
+  if (role === "creator" && missing.length === 0) {
+    const catalog = readCatalog();
+    const destination = onboardingDestination(productId, { products: catalog.products, listings: catalog.listings });
+    if (destination) redirect(destination);
+  }
 }
 
 export async function approveApplication(formData: FormData): Promise<void> {
   const access = await readAccess();
-  if (access.role !== "admin") return;
+  if (adminPageDecision(access.role) !== "allow") return;
   const id = String(formData.get("id") ?? "");
   const workspace = readWorkspace();
   const application = workspace.applications.find((item) => item.id === id);
   if (!application || application.missing.length > 0) return;
   application.status = "approved";
+  workspace.audit = appendAudit(workspace.audit, {
+    at: new Date().toISOString(),
+    actor: access.userId ?? access.email ?? "admin",
+    action: "approve-application",
+    detail: application.id,
+    role: "admin",
+    beforeState: "pending",
+    afterState: "approved",
+    reason: "application complete",
+  });
   writeWorkspace(workspace);
   revalidatePath("/admin/approvals");
 }
 
 export async function saveStorefront(formData: FormData): Promise<void> {
   const access = await readAccess();
-  if (access.role !== "creator" && access.role !== "admin") return;
+  const plan = access.role === "creator" ? (await readSellerPlan()).code : null;
+  const level = can({ role: access.role, userId: access.userId, tenantId: access.userId, plan }, "creator.storefront", { ownerId: access.userId });
+  if (commitIfAllowed(level, "keep", "write") !== "write") return;
   const workspace = readWorkspace();
   const sellerId = access.userId ?? "";
   const next = { sellerId, policy: String(formData.get("policy") ?? ""), collection: String(formData.get("collection") ?? "") };
@@ -451,13 +597,25 @@ export async function saveStorefront(formData: FormData): Promise<void> {
 
 export async function reserveCampaign(formData: FormData): Promise<void> {
   const access = await readAccess();
-  if (access.role !== "creator") return;
+  const plan = access.role === "creator" ? (await readSellerPlan()).code : null;
+  const level = can({ role: access.role, userId: access.userId, tenantId: access.userId, plan }, "creator.campaign", { ownerId: access.userId });
+  if (commitIfAllowed(level, "keep", "write") !== "write") return;
+  const sku = String(formData.get("sku") ?? "");
+  const handle = sellerHandleFromEmail(access.email ?? "", access.userId ?? "");
+  const owns = readCatalog().listings.some((item) => item.sku === sku && (item.sellerId === access.userId || item.sellerHandle === handle));
+  if (!owns) return;
   const workspace = readWorkspace();
-  workspace.audit.unshift({
+  const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+  workspace.campaigns.unshift({ id: `camp-${Date.now()}`, sellerId: access.userId ?? "", sku, quantity: 1, expiresAt });
+  workspace.audit = appendAudit(workspace.audit, {
     at: new Date().toISOString(),
     actor: access.userId ?? "",
-    action: "campaign-denied",
-    detail: String(formData.get("sku") ?? ""),
+    action: "campaign-hold",
+    detail: sku,
+    role: "creator",
+    beforeState: null,
+    afterState: expiresAt,
+    reason: "72-hour campaign hold",
   });
   writeWorkspace(workspace);
   revalidatePath("/campaigns");

@@ -1,27 +1,31 @@
+import { WorkspaceTitle } from "@/components/workspace-title";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Denied, RoleNav } from "@/components/role-nav";
-import { readAccess } from "@/lib/auth/access";
+import { requireAdminPage } from "@/lib/auth/admin-gate";
 import { approveStaged, ignoreStaged } from "@/lib/catalog/actions";
 import { readWorkspace } from "@/lib/workspace/store";
 
 export const metadata: Metadata = { title: "תור בדיקה", description: "אישור או התעלמות משורות ייבוא." };
 
 async function StagingContent() {
-  const access = await readAccess();
-  if (access.role === "guest") redirect("/login?next=/admin/staging");
-  if (access.role !== "admin") return <Denied access={access} />;
+  const gate = await requireAdminPage("/admin/staging");
+  if (!gate.admin) return <Denied access={gate.access} />;
+  const access = gate.access;
   const rows = readWorkspace().staged;
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">תור בדיקה</h1>
+      <WorkspaceTitle he="תור בדיקה" en="Review queue" />
       <p>
         <Link href="/?preview=1">תצוגת דף הבית ועריכת שאלות</Link>
       </p>
-      {rows.length === 0 ? <p className="status">אין שורות בתור. ייבוא מוצרים נמצא בלוח הבקרה.</p> : null}
+      {rows.length === 0 ? (
+        <p className="status">
+          אין שורות בתור. <Link href="/admin">ייבוא מוצרים ומלאי</Link>
+        </p>
+      ) : null}
       <div className="catalog-list">
         {rows.map((row) => (
           <article className="card" key={row.id}>

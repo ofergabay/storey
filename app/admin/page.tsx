@@ -1,9 +1,9 @@
+import { WorkspaceTitle } from "@/components/workspace-title";
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { CsvUpload } from "@/components/csv-upload";
 import { Denied, RoleNav } from "@/components/role-nav";
-import { readAccess } from "@/lib/auth/access";
+import { requireAdminPage } from "@/lib/auth/admin-gate";
 import { importPartySample, importPartyStock } from "@/lib/catalog/actions";
 
 export const metadata: Metadata = {
@@ -12,15 +12,15 @@ export const metadata: Metadata = {
 };
 
 async function AdminContent({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
-  const [access, query] = await Promise.all([readAccess(), searchParams]);
-  if (access.role === "guest") redirect("/login?next=/admin");
-  if (access.role !== "admin") return <Denied access={access} />;
+  const [gate, query] = await Promise.all([requireAdminPage("/admin"), searchParams]);
+  if (!gate.admin) return <Denied access={gate.access} />;
+  const access = gate.access;
   const notice = query.notice === "stock" ? "הספירה התקינה הוחלה. זו ספירה לבדיקה, לא אישור מחסן." : query.notice;
 
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">ניהול קטלוג ומלאי</h1>
+      <WorkspaceTitle he="ניהול קטלוג ומלאי" en="Catalog and stock" />
       {notice ? <p className="status">{notice}</p> : null}
       <section className="card" aria-labelledby="import-title">
         <div className="copy">

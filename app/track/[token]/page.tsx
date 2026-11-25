@@ -1,5 +1,7 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { connection } from "next/server";
+import { Wordmark } from "@/components/wordmark";
 import { PaymentPolicyBanner } from "@/components/payment-note";
 import { captureEvidence } from "@/lib/commerce/payment/recover";
 import { recoverAcceptedCaptures } from "@/lib/commerce/payment/provider-store";
@@ -7,6 +9,10 @@ import { readPaymentCases } from "@/lib/commerce/payment/store";
 import { buyerView } from "@/lib/commerce/payment/views";
 import { readWorkspace } from "@/lib/workspace/store";
 import { answerBackorder, requestOrderReturn, sandboxPurchase } from "@/lib/workspace/actions";
+import { startPaymeCheckout } from "@/lib/commerce/payment/payme/actions";
+import { readPaymeAttempt } from "@/lib/commerce/payment/payme/attempts";
+import { paymeConfigMessage, readPaymeConfig, sellerPaymeId } from "@/lib/commerce/payment/payme/config";
+import { readAccess } from "@/lib/auth/access";
 import { formatShekels } from "@/lib/money";
 
 const labels: Record<string, string> = {
@@ -22,21 +28,54 @@ const labels: Record<string, string> = {
 async function TrackContent({ params }: { params: Promise<{ token: string }> }) {
   await connection();
   recoverAcceptedCaptures();
-  const { token } = await params;
+  const [{ token }, access] = await Promise.all([params, readAccess()]);
   const workspace = readWorkspace();
   const order = workspace.orders.find((item) => item.token === token);
-  if (!order) return <p className="status">ההזמנה לא נמצאה.</p>;
+  if (!order) {
+    return (
+      <article className="customer-card">
+        <header className="topbar customer-topbar">
+          <Wordmark href="/" />
+        </header>
+        <div className="copy">
+          <h1 className="page-title">ההזמנה לא נמצאה</h1>
+          <p>הקישור לא תואם הזמנה שמורה.</p>
+          <Link className="button-secondary" href="/">חזרה לדף הבית</Link>
+        </div>
+      </article>
+    );
+  }
+  const creatorViewing = access.role === "creator" || (access.role === "admin" && access.userId !== null);
   const openReturn = workspace.returns.find((item) => item.orderId === order.id);
   return (
     <article className="customer-card">
+      <header className="topbar customer-topbar">
+        <Wordmark href="/" />
+        <Link className="button-secondary" href={creatorViewing ? "/orders" : "/"}>
+          חזרה
+        </Link>
+      </header>
       <div className="copy">
         <h1 className="page-title">מעקב הזמנה</h1>
-        <p>{labels[order.status]}</p>
+        {creatorViewing ? <p className="hint">טלפון ורחוב של הקונה לא מוצגים במעקב.</p> : null}
+        <p>
+          {readPaymentCases().find((item) => item.state.id === order.paymentCaseId)?.adapter === "payme" && order.status === "sandbox_paid"
+            ? "PayMe בסביבת בדיקה אישר את הסכום. Storey לא שמרה פרטי כרטיס."
+            : labels[order.status]}
+        </p>
         <p>
           {order.quantity} מארזים · <span dir="ltr">{formatShekels(order.unitAgorot * order.quantity)}</span>
         </p>
+        {order.shippingSnapshot ? (
+          <p>
+            משלוח <span dir="ltr">{formatShekels(order.shippingSnapshot.shippingAgorot)}</span>
+            {" "}· סה״כ <span dir="ltr">{formatShekels(order.shippingSnapshot.allocation.charge)}</span>
+            {order.shippingSnapshot.groups[0] ? ` · הגעה ${order.shippingSnapshot.groups[0].windowMinDays}–${order.shippingSnapshot.groups[0].windowMaxDays} ימים` : ""}
+          </p>
+        ) : null}
         {order.tracking ? <p dir="ltr">{order.tracking}</p> : null}
         {order.paymentNote ? <p className="status">{order.paymentNote}</p> : null}
+        <PaymentActions orderId={order.id} sellerHandle={order.sellerHandle} status={order.status} />
         <p>מדיניות שמורה: <span dir="ltr">{order.policyVersion ?? "original-2026-11"}</span></p>
         <PaymentPolicyBanner />
         {(() => {
@@ -73,15 +112,6 @@ async function TrackContent({ params }: { params: Promise<{ token: string }> }) 
             </>
           );
         })()}
-        {order.status === "held" && !order.paymentCaseId ? (
-          <form action={sandboxPurchase}>
-            <input type="hidden" name="id" value={order.id} />
-            <button className="button-publish" type="submit">
-              רכישת ארגז פיתוח
-            </button>
-          </form>
-        ) : null}
-        <p className="hint">הכפתור לא גובה תשלום. הוא מעביר את ההזמנה לתור המחסן.</p>
         {order.status === "dispatched" && !openReturn ? (
           <form action={requestOrderReturn}>
             <input type="hidden" name="token" value={order.token} />
@@ -94,6 +124,38 @@ async function TrackContent({ params }: { params: Promise<{ token: string }> }) 
         {openReturn ? <p className="status">סטטוס החזרה: {openReturn.status}</p> : null}
       </div>
     </article>
+  );
+}
+
+function PaymentActions({ orderId, sellerHandle, status }: { orderId: string; sellerHandle: string; status: string }) {
+  if (status !== "held") return null;
+  const attempt = readPaymeAttempt(orderId);
+  const configured = readPaymeConfig();
+  const merchant = configured.ok ? sellerPaymeId(configured.config, sellerHandle) : null;
+  const paymeMessage = !configured.ok ? paymeConfigMessage(configured.missing) : merchant ? null : paymeConfigMessage(["חשבון ספק מאושר"]);
+  return (
+    <>
+      {attempt ? (
+        <form action={startPaymeCheckout}>
+          <input type="hidden" name="id" value={orderId} />
+          <button className="button-publish" type="submit">המשך לתשלום המאובטח</button>
+        </form>
+      ) : paymeMessage ? (
+        <p className="status">{paymeMessage}</p>
+      ) : (
+        <form action={startPaymeCheckout}>
+          <input type="hidden" name="id" value={orderId} />
+          <button className="button-publish" type="submit">תשלום מאובטח ב־PayMe</button>
+        </form>
+      )}
+      {attempt ? null : (
+        <form action={sandboxPurchase}>
+          <input type="hidden" name="id" value={orderId} />
+          <button className="button-secondary" type="submit">רכישת ארגז פיתוח</button>
+        </form>
+      )}
+      <p className="hint">רכישת ארגז פיתוח היא מתאם מקומי. היא לא גובה כרטיס ולא מסמנת כסף כשולם אצל ספק.</p>
+    </>
   );
 }
 

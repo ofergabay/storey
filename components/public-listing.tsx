@@ -12,6 +12,7 @@ export function PublicListing({
   sellerName,
   sellingPrice,
   checkoutHref,
+  checkoutNote = "ההצעה מחשבת את סך המארזים. מע״מ ומשלוח לא מחושבים, ואין תשלום.",
 }: {
   title: string;
   summary: string;
@@ -23,6 +24,7 @@ export function PublicListing({
   sellerName: string;
   sellingPrice: string | null;
   checkoutHref?: string;
+  checkoutNote?: string;
 }) {
   const pack = `${packLabel} · ${packSize} ${packUnit}`;
 
@@ -47,7 +49,7 @@ export function PublicListing({
               <span>מחיר למארז</span>
               <strong dir="ltr">{sellingPrice}</strong>
             </p>
-            <p className="checkout-note">ההצעה מחשבת את סך המארזים. מע״מ ומשלוח לא מחושבים, ואין תשלום.</p>
+            <p className="checkout-note">{checkoutNote}</p>
             {checkoutHref ? (
               <a className="button-publish" href={checkoutHref}>
                 להצעת מחיר

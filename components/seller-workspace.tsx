@@ -8,6 +8,7 @@ import { PUBLIC_LISTING } from "@/lib/cloud-nine-public";
 import { LOCAL_DRAFT_STORAGE_KEY } from "@/lib/local-draft";
 import type { SellerQuoteList } from "@/lib/seller-quotes";
 import type { SellerPlanView } from "@/lib/commerce/plans";
+import { maskPhone, maskStreet } from "@/lib/privacy";
 import { agorotToInput, formatMarginRatio, formatShekelAfter, formatShekels } from "@/lib/money";
 import { grossMarginRatio, grossProfitAgorot, parseRetailDraft } from "@/lib/pricing";
 
@@ -25,7 +26,7 @@ function writeLocalDraft(value: string) {
 
 function publishError(reason: "invalid" | "below-cost" | "auth" | "plan" | "save"): string {
   if (reason === "below-cost") {
-    return "אי אפשר לפרסם מחיר שנמוך מעלות המארז. הרווח צריך להיות אפס או חיובי.";
+    return "המחיר נמוך מכלל המרווח. לפני עמלות צריך להישאר אפס או יותר.";
   }
   if (reason === "auth") return "צריך להתחבר לחשבון של מאיה כדי לפרסם.";
   if (reason === "plan") return "התוכנית לא כוללת פרסום. הטיוטה נשארה כאן.";
@@ -176,10 +177,6 @@ export function SellerWorkspace({
             }}
           >
             <div className="figures">
-              <div className="figure">
-                <span>עלות המארז עבורך</span>
-                <strong dir="ltr">{formatShekelAfter(wholesaleAgorot)}</strong>
-              </div>
               <label className="figure" htmlFor="retail-price">
                 <span>מחיר המכירה שלך</span>
                 <span className="retail-field" dir="ltr">
@@ -202,7 +199,7 @@ export function SellerWorkspace({
                 </span>
               </label>
               <div className="figure figure-profit">
-                <span>הרווח שלך למארז</span>
+                <span>לפני עמלות</span>
                 <strong dir="ltr" className={belowCost ? "is-negative" : undefined}>
                   {profitText ?? "—"}
                 </strong>
@@ -325,9 +322,9 @@ function SellerQuotes({ quotes, publishedAgorot }: { quotes: SellerQuoteList; pu
               <p className="quote-address">
                 {quote.recipientName}
                 <br />
-                <span dir="ltr">{quote.phone}</span>
+                <span dir="ltr">{maskPhone(quote.phone)}</span>
                 <br />
-                {quote.city}, {quote.street}
+                {quote.city}, {maskStreet()}
               </p>
             </article>
           ))}

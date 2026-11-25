@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { readAccess } from "@/lib/auth/access";
+import { adminPageDecision } from "@/lib/auth/admin-gate";
+import { packEarnings } from "@/lib/catalog/offer";
+import { rateAt } from "@/lib/commerce/payment/commissions";
+import { WEEKLY_POLICY } from "@/lib/commerce/payment/flag";
+import { policyForSeller } from "@/lib/commerce/payment/cohort";
+import { readCommissions, readTariffs } from "@/lib/commerce/payment/policy-store";
 import { parseProductCsv, parseStockCsv } from "@/lib/catalog/csv";
 import { previewProducts, previewStock, type ProductPreview, type StockPreview } from "@/lib/catalog/model";
 import { listingSlug, sellerHandleFromEmail } from "@/lib/catalog/identity";
@@ -16,8 +22,9 @@ export type CsvActionResult<T> = { ok: true; rows: T[]; notes: string[] } | { ok
 
 async function requireAdmin(): Promise<{ ok: true; userId: string } | { ok: false; message: string }> {
   const access = await readAccess();
-  if (access.role === "guest") return { ok: false, message: "צריך להתחבר קודם." };
-  if (access.role !== "admin") return { ok: false, message: "החשבון הזה אינו מורשה לניהול הקטלוג." };
+  if (adminPageDecision(access.role) !== "allow") {
+    return { ok: false, message: access.role === "guest" ? "צריך להתחבר קודם." : "החשבון הזה אינו מורשה לניהול הקטלוג." };
+  }
   return { ok: true, userId: access.userId ?? "admin" };
 }
 
@@ -140,6 +147,7 @@ async function pricedListing(sku: string, rawRetail: string, publish: boolean, c
       draftHeadline: headline,
       draftRecommendation: recommendation,
       paused: publish ? false : current?.paused ?? false,
+      creatorFundsShipping: current?.creatorFundsShipping ?? false,
     };
     writeCatalog({
       ...catalog,
@@ -183,6 +191,34 @@ export async function setCatalogSalePaused(sku: string, paused: boolean) {
   });
 }
 
+export async function setCreatorFundsShipping(formData: FormData): Promise<void> {
+  const access = await readAccess();
+  const sellerId = access.userId;
+  const sku = String(formData.get("sku") ?? "");
+  const enabled = String(formData.get("enabled") ?? "") === "yes";
+  if (!sellerId || (access.role !== "creator" && access.role !== "admin")) redirect(`/catalog/${sku}?shipping=forbidden`);
+  const catalog = readCatalog();
+  const current = catalog.listings.find((item) => item.sellerId === sellerId && item.sku === sku);
+  const product = catalog.products.find((item) => item.sku === sku);
+  if (!current || !product || current.retailAgorot <= 0) redirect(`/catalog/${sku}?shipping=missing`);
+  const handle = sellerHandleFromEmail(access.email ?? sellerId, sellerId);
+  if (enabled && policyForSeller(handle) === WEEKLY_POLICY) {
+    const rate = rateAt(readCommissions().cards, Date.now());
+    const sample = readTariffs().find((rule) => rule.status === "published" && rule.warehouseCode === product.warehouseCode && rule.service === "standard");
+    if (rate && sample) {
+      const preview = packEarnings(current.retailAgorot, product.costAgorot, WEEKLY_POLICY, rate, sample.priceAgorot);
+      if (preview?.hint.includes("מתחת לאפס")) redirect(`/catalog/${sku}?shipping=negative`);
+    }
+  }
+  writeCatalog({
+    ...catalog,
+    listings: catalog.listings.map((item) => (item === current ? { ...current, creatorFundsShipping: enabled } : item)),
+  });
+  revalidatePath(`/catalog/${sku}`);
+  revalidatePath(`/s/${current.sellerHandle}/${current.slug}/checkout`);
+  redirect(`/catalog/${sku}?shipping=${enabled ? "on" : "off"}`);
+}
+
 export async function importPartySample(): Promise<void> {
   const admin = await requireAdmin();
   if (!admin.ok) redirect(`/admin?notice=${encodeURIComponent(admin.message)}`);
@@ -220,7 +256,7 @@ export async function approveStaged(formData: FormData): Promise<void> {
 
 export async function saveProductCopy(formData: FormData): Promise<void> {
   const access = await readAccess();
-  if (access.role !== "admin") return;
+  if (adminPageDecision(access.role) !== "allow") return;
   const sku = String(formData.get("sku") ?? "");
   const catalog = readCatalog();
   const product = catalog.products.find((item) => item.sku === sku);

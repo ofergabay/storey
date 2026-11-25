@@ -15,12 +15,14 @@ export function PaymentPolicyBanner() {
 }
 
 export function MoneyBuckets({ money }: { money: PartyMoney }) {
+  const open = money.pending + money.eligible + money.transferred + money.bankPaid + money.recovery;
+  if (open === 0) return <p>אין יתרה פתוחה בחשבון הזה.</p>;
   return (
     <ul>
-      <li>ממתין: {formatShekels(money.pending)}</li>
-      <li>זכאי להעברה: {formatShekels(money.eligible)}</li>
-      <li>הועבר לספק הסליקה: {formatShekels(money.transferred)}</li>
-      <li>אושר בבנק: {formatShekels(money.bankPaid)}</li>
+      {money.pending > 0 ? <li>ממתין: {formatShekels(money.pending)}</li> : null}
+      {money.eligible > 0 ? <li>זכאי להעברה: {formatShekels(money.eligible)}</li> : null}
+      {money.transferred > 0 ? <li>הועבר לספק הסליקה: {formatShekels(money.transferred)}</li> : null}
+      {money.bankPaid > 0 ? <li>אושר בבנק: {formatShekels(money.bankPaid)}</li> : null}
       {money.recovery > 0 ? <li>חוב לגבייה: {formatShekels(money.recovery)}</li> : null}
     </ul>
   );

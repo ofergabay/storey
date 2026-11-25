@@ -1,22 +1,22 @@
+import { WorkspaceTitle } from "@/components/workspace-title";
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { Denied, RoleNav } from "@/components/role-nav";
-import { readAccess } from "@/lib/auth/access";
+import { requireAdminPage } from "@/lib/auth/admin-gate";
 import { approveApplication } from "@/lib/workspace/actions";
 import { readWorkspace } from "@/lib/workspace/store";
 
 export const metadata: Metadata = { title: "אישורים", description: "אישור יוצרים וספקים." };
 
 async function ApprovalsContent() {
-  const access = await readAccess();
-  if (access.role === "guest") redirect("/login?next=/admin/approvals");
-  if (access.role !== "admin") return <Denied access={access} />;
+  const gate = await requireAdminPage("/admin/approvals");
+  if (!gate.admin) return <Denied access={gate.access} />;
+  const access = gate.access;
   const rows = readWorkspace().applications;
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">אישורי יוצרים וספקים</h1>
+      <WorkspaceTitle he="אישורי יוצרים וספקים" en="Creator and supplier approvals" />
       {rows.length === 0 ? <p className="status">אין בקשות ממתינות.</p> : null}
       <div className="catalog-list">
         {rows.map((row) => (

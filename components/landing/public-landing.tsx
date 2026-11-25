@@ -128,6 +128,8 @@ export function PublicLanding({
   initialChannel = null,
   initialAuth = null,
   authError = null,
+  initialProduct = null,
+  signedInEligible = false,
   initialLocale = "he",
 }: {
   faqs: FaqItem[];
@@ -135,6 +137,8 @@ export function PublicLanding({
   initialChannel?: SelectedChannel | null;
   initialAuth?: AuthIntent | null;
   authError?: string | null;
+  initialProduct?: string | null;
+  signedInEligible?: boolean;
   initialLocale?: LandingLocale;
 }) {
   const [locale, setLocale] = useState<LandingLocale>(initialLocale ?? "he");
@@ -143,6 +147,7 @@ export function PublicLanding({
   const [authOpen, setAuthOpen] = useState(initialAuth !== null);
   const [authMode, setAuthMode] = useState<AuthIntent>(initialAuth ?? "login");
   const [authOpener, setAuthOpener] = useState<HTMLElement | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<string | null>(initialProduct);
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [notice, setNotice] = useState("");
@@ -161,11 +166,20 @@ export function PublicLanding({
     document.getElementById("channel-selection")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [initialChannel]);
 
-  function openAuth(mode: AuthIntent, opener: HTMLElement) {
+  function openAuth(mode: AuthIntent, opener: HTMLElement, product?: string) {
+    setSelectedProduct(product ?? null);
     setAuthOpener(opener);
     setAuthMode(mode);
     setAuthOpen(true);
     setMenuOpen(false);
+  }
+
+  function chooseProduct(product: string, opener: HTMLElement) {
+    if (signedInEligible) {
+      window.location.assign(`/catalog/start?product=${encodeURIComponent(product)}`);
+      return;
+    }
+    openAuth("register", opener, product);
   }
 
   const closeAuth = useCallback(() => {
@@ -346,7 +360,7 @@ export function PublicLanding({
                   <h3>{title}</h3>
                   <ShowcaseFacts item={item} locale={locale} />
                   {browse ? null : (
-                    <button className="storey-cta" type="button" onClick={(event) => openAuth("register", event.currentTarget)}>
+                    <button className="storey-cta" type="button" onClick={(event) => chooseProduct(item.id, event.currentTarget)}>
                       {text.choose}
                     </button>
                   )}
@@ -457,7 +471,7 @@ export function PublicLanding({
           <Wordmark href="/" />
         </div>
       </footer>
-      <AuthOverlay open={authOpen} mode={authMode} locale={locale} errorCode={authError} returnFocus={authOpener} onClose={closeAuth} />
+      <AuthOverlay open={authOpen} mode={authMode} locale={locale} errorCode={authError} productId={selectedProduct} returnFocus={authOpener} onClose={closeAuth} />
     </div>
   );
 }

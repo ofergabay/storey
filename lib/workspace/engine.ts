@@ -1,4 +1,5 @@
 import type { StockState } from "@/lib/catalog/model";
+import type { ShippingSnapshot } from "@/lib/commerce/payment/shipping-quote";
 
 export const HOLD_MS = 10 * 60 * 1000;
 
@@ -22,12 +23,15 @@ export type WorkOrder = {
   quantity: number;
   unitAgorot: number;
   warehouseCode: string;
-  status: "held" | "sandbox_paid" | "picking" | "packed" | "labeled" | "dispatched" | "cancelled";
+  status: "held" | "sandbox_paid" | "picking" | "packed" | "labeled" | "dispatched" | "failed" | "cancelled";
+  previewSale?: boolean;
   holdExpiresAt: string;
   tracking: string | null;
-  policyVersion?: "original-2026-11" | "pay-2026-11";
+  policyVersion?: "original-2026-11" | "pay-2026-11" | "weekly-2026-11";
   paymentCaseId?: string | null;
   paymentNote?: string | null;
+  shippingSnapshot?: ShippingSnapshot;
+  attribution?: { creator: string; offer: string; campaign: string; channel: string } | null;
 };
 
 export type ReturnCase = {

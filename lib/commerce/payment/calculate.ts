@@ -1,4 +1,4 @@
-import { PAYMENT_POLICY, TEST_CREATOR_BPS, TEST_SUPPLIER_BPS } from "./flag.ts";
+import { PAYMENT_POLICY, TEST_CREATOR_BPS, TEST_SUPPLIER_BPS, type PolicyVersion } from "./flag.ts";
 import { allocateLargestRemainder, applyBps } from "./round.ts";
 
 export type QuoteLine = {
@@ -32,6 +32,7 @@ export type QuoteInput = {
   taxDetermined: boolean;
   stockFresh: boolean;
   setupApproved: boolean;
+  policyVersion?: PolicyVersion;
 };
 
 export type BlockCode = "MISSING_TAX" | "MIXED_CURRENCY" | "NEGATIVE_PROCEEDS" | "STALE_STOCK" | "UNAPPROVED_SETUP" | "INVALID";
@@ -60,7 +61,7 @@ export type UnitSlice = {
 };
 
 export type Allocation = {
-  policyVersion: typeof PAYMENT_POLICY;
+  policyVersion: PolicyVersion;
   supplierBps: number;
   creatorBps: number;
   currency: "ILS";
@@ -203,7 +204,7 @@ function summarize(units: UnitSlice[], input: QuoteInput): Allocation {
   const tax = sum((unit) => unit.tax);
   const storeyGross = sum((unit) => unit.storeyGross);
   return {
-    policyVersion: PAYMENT_POLICY,
+    policyVersion: input.policyVersion ?? PAYMENT_POLICY,
     supplierBps: input.supplierBps,
     creatorBps: input.creatorBps,
     currency: "ILS",

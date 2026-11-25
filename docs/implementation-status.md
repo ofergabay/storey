@@ -1,6 +1,72 @@
 # Storey implementation status
 
-Updated: 23 November 2026, after the browser restart check and the simulated Party Concept refund.
+Updated: 24 November 2026, after reconciling the uncommitted weekly payout, PayMe sandbox, and experiment files with the role, RLS, and masking rules.
+
+## Reconciliation
+
+The weekly payout, PayMe sandbox, and three experiments stay in this working tree. They are not a live charge, a live withdrawal, or a change to storey-dev. Role separation, the tenant RLS file, and buyer phone/street masking stay as they were.
+
+- **Weekly payout** stays on `weekly-2026-11` for an enabled seller cohort. A batch includes only captured orders that are not a creator preview, not failed or cancelled, and not fully refunded or in an open dispute. The admin who creates the instruction is stored as the maker and written to the audit log. That same person cannot mark it `bank_paid`. The finance button still only simulates completion, and simulation does not set a bank reference. `withdraw-balance` is not called.
+- **PayMe sandbox** still requires `PAYME_ENV=sandbox` and `https://sandbox.payme.io/api/`. Amounts are positive integer agorot in `ILS`. A hosted sale moves from pending (`held`) to paid (`sandbox_paid`), failed (`failed`), or cancelled (`cancelled`). A failed or cancelled callback does not capture and does not post a journal. A repeated callback does not post again. Buyer listing and checkout pages show the retail price and the buyer shipping price. Wholesale stays in the quote calculation.
+- **Experiments** stay behind `STOREY_EXPERIMENT_FIRST_SHARE`, `STOREY_EXPERIMENT_PARTY_KIT`, and `STOREY_EXPERIMENT_MY_PACE`. Unset is on only in development. Production and every other environment stay on the current screen unless the flag is `on`. A creator, supplier, or admin opening a public listing is a preview: it is not a visit and it is not a pace sale. The visit rows are not the seller analytics report in FR-WEB-006.
+
+## Creator experiments
+
+Three experiments sit on the existing catalog, listing, checkout, and earnings screens. Each has its own flag and a stable assignment stored in gitignored `data/dev-experiments.json`. In development an unset flag is on and splits 50/50. In production, test, and every other environment an unset flag is off. Setting a flag to `off` keeps the current screen. Setting it to `on` enables that one experiment.
+
+- `STOREY_EXPERIMENT_FIRST_SHARE` is assigned by creator. The product page still autosaves the price and shows expected earnings from the existing split. A treatment creator gets one saved line, an angle, and separate actions for WhatsApp, Instagram, Facebook, X, and copy. The Story image does not contain the link. Manual edits stay until “תנו לי אחרת”. Generated lines are checked against other creators for the same product and language.
+- `STOREY_EXPERIMENT_PARTY_KIT` is assigned by the `storey_vid` visitor cookie. The listing shows the pack quantity and price, then a city and postcode lookup that uses the published supplier tariff. A missing or changed quote is stated before the checkout link. Checkout still rechecks stock and shipping, and stores creator, offer, campaign, and channel on the order.
+- `STOREY_EXPERIMENT_MY_PACE` is assigned when a creator has a first delivered order. The earnings page shows that order once, the ledger amount, and a duplicate-campaign draft. “הקצב שלי” uses trailing days in Asia/Jerusalem, keeps a refunded delivery in the count, and does not turn a loss into a larger projection.
+
+A creator preview and the common social preview crawlers are not recorded as qualified visits. Opening a composer, saving the Story image, or copying a link is the share action. Publication stays with the creator.
+
+These channel composers were not opened on a real device: WhatsApp, Instagram’s native share sheet, Facebook, and X. The tests check the destination URLs, the X length rule, the Story file, the clipboard message, and the fallback.
+
+## PayMe sandbox
+
+The hosted checkout adapter talks only to `https://sandbox.payme.io/api/`. Storey never collects a card number. The in-process simulator remains the regression path and the path for payout steps PayMe has not approved. `lib/commerce/payment/port.ts` is the adapter boundary. The test adapter stays `live: false`. A PayMe case is stored with `adapter: "payme"` and `live: false`.
+
+Set these on the server, not in the client bundle:
+
+- `PAYME_ENV=sandbox`
+- `PAYME_API_BASE=https://sandbox.payme.io/api/`
+- `PAYME_CLIENT_KEY`
+- `PAYME_CLIENT_PASSWORD`
+- `PAYME_CALLBACK_URL` as a public `https` URL. `localhost` is rejected.
+- `PAYME_RETURN_ORIGIN` as a public `https` origin. The buyer returns to `/payme/return/[token]`, which only redirects to tracking.
+- `data/dev-payme-sellers.json`, gitignored, mapping a creator handle to `seller_payme_id`.
+
+`STOREY_PAYME_PAYOUTS` stays unset. `withdraw-balance` is not called. A prepared withdrawal uses the batch total in agorot, not a larger wallet balance. A balance transfer and a bank withdrawal are different records. Simulated completion of a weekly instruction does not set `bank_paid`.
+
+`generate-sale` uses `sale_type=authorize`, integer agorot, `ILS`, the Storey order id, and `market_fee: 0`. Neither commission rate is sent as `market_fee`. The returned `payme_sale_id` is stored before the hosted page is shown. A refresh resumes that sale. Partner callbacks are checked with `md5(client_key + client_password + payme_transaction_id + payme_sale_id)` and then re-read with `get-transactions`. A bad signature changes nothing. After a verified authorization, an expired hold is voided with `refund-sale` and is not captured. A verified capture posts one journal and releases fulfillment once. A lost capture stays on the same sale. A partial refund uses `sale_refund_amount`. A repeated callback does not add credit. A provider status of failed, declined, or rejected moves the order to `failed` and releases the hold. A void or cancellation moves it to `cancelled`. Neither status captures or posts a journal. A second callback for that sale does not release the hold again or open another sale.
+
+Routes: `POST /payme/callback`, `GET /payme/return/[token]`. The Party Concept tracking page keeps `רכישת ארגז פיתוח` for the simulator and shows the PayMe button only when the creator mapping and public URLs exist. A missing mapping is a configuration error and does not open a sale.
+
+`supabase/migrations/20261123200000_payme_callback.sql` was applied only to an isolated PGlite database in `tests/payme-contract.test.ts`. It was not applied to storey-dev.
+
+Three labels:
+
+- **Simulated.** The local adapter, the weekly statement, and `סיום מדומה של ההוראה`. This is not a provider payment.
+- **PayMe sandbox confirmed.** Not yet. The external hosted charge and refund were not run.
+- **Waiting on provider approval.** The approved source account, two-beneficiary routing, a withdrawal before delivery, and the reversal process. Live payouts stay off.
+
+The external sandbox run is **unverified**. It needs a sandbox partner key, the client password, the creator `seller_payme_id`, a public callback URL, and a connected sandbox terminal. Production credentials, live withdrawals, storey-dev SQL, and deployment stay off.
+
+## Weekly policy
+
+`weekly-2026-11` is the policy for a new quote when the seller is in the enabled cohort. `STOREY_PAYMENT_POLICY=pay-2026-11` or `STOREY_PAYMENT_POLICY=weekly-2026-11`, together with `STOREY_PAYMENT_COHORT`, is only that switch. In development, `data/dev-payment-cohort.json` can enable the same pair. It is gitignored. Production ignores that file. The local cohort file is paused.
+
+A quote already stored as `original-2026-11` or `pay-2026-11` keeps that snapshot. The original 70 / 35 / 5 capture and the unpaid Party Concept ₪50 order are unchanged. `pay-2026-11` still waits seven days after delivery. `weekly-2026-11` makes a unit eligible when delivery or pickup is verified. A label or dispatch does not.
+
+Storey commissions are integer basis points, 0–100%, with an effective date and an audit row. Only an admin can publish them. Supplier and creator rates are independent. 5% and 10% appear only in the test fixture. The rates live in gitignored `data/dev-commissions.json`, not in source.
+
+A supplier publishes, previews and retires tariffs for warehouse `PILOT-01` from `/supplier/settings`. Coverage prefers postcode, then city, then zone, then nationwide. Two prices at the same priority are rejected. The buyer sees each shipment group before payment on the social listing checkout. Pickup is not selected by default. A group with no service blocks payment. Buyer-paid shipping, the supplier freight entitlement and the sponsor are stored separately. Supplier-funded free shipping charges the buyer zero and leaves the supplier with no freight entitlement. Creator-funded free shipping charges the buyer zero, keeps the supplier freight, and reduces the creator proceeds. A negative creator result blocks the quote.
+
+Capture uses the accepted snapshot. Changing a tariff or a commission afterwards does not change that capture or its refund. Shared freight is split by largest remainder. A later parcel split does not change the buyer charge, and released freight cannot exceed the snapshot. The weekly batch pays one beneficiary across orders and creators. The cutoff is Sunday 00:00 Asia/Jerusalem unless `STOREY_WEEKLY_WEEKDAY` and `STOREY_WEEKLY_HOUR` override it. The payout instruction reference and the bank reference are different. The adapter remains simulated. No live charge, refund or bank payout is sent.
+
+`supabase/migrations/20261123180000_weekly_payout.sql` was applied only to an isolated PGlite database in `tests/weekly-policy.test.ts`, together with the earlier payment migration. It was not applied to storey-dev.
+
+The zero-tax fixture is retail ₪100, wholesale ₪60, supplier delivery ₪25, supplier commission 5% and creator commission 10%. The buyer pays ₪125 once. Supplier entitlement is ₪82, creator entitlement is ₪36, and Storey gross commission is ₪7. Processing is recorded separately. Before delivery both beneficiaries are eligible for ₪0. After one verified delivery they are eligible for ₪82 and ₪36. A repeated delivery event does not change either balance.
 
 ## Payment policy
 
@@ -62,7 +128,7 @@ The courier-paid-directly branch is not enabled. Tax is accepted only when the q
 
 ## How to open a role
 
-Development only. Open http://localhost:3000/dev and choose אורח, יוצר/ת, ספק, מחסן, or ניהול. The choice is an httpOnly cookie for eight hours and it overrides a Supabase session while `NODE_ENV` is development. It is not a production login.
+Development only. Open http://localhost:3000/dev and choose אורח, יוצר/ת, ספק, or ניהול. The choice is an httpOnly cookie for eight hours and it overrides a Supabase session while `NODE_ENV` is development. It is not a production login. There is no warehouse role. An admin can open a supplier or creator screen only with `?inspect=1`, and that view cannot submit fulfillment. `proxy.ts` sends a signed-in user away from `/`, `/login`, `/register`, and `/plans` before those pages render. An admin can still open `/?preview=1`. `/register/supplier` stays available.
 
 The confirmed Supabase admin remains `ofergabay@gmail.com`. Sign in at `/login` with that account’s existing password. `STOREY_ADMIN_EMAILS` can add more admin emails. Supabase requires email confirmation before a new registration gets a session. A reserved address such as `admin@storey.test` is rejected by Auth. Password recovery renders at `/recover` and was not submitted, so no reset email was sent.
 
@@ -101,14 +167,14 @@ The confirmed Supabase admin remains `ofergabay@gmail.com`. Sign in at `/login` 
 | Published catalog | http://localhost:3000/admin/catalog | Admin | Nav | Open a product and its edit history | FR-CAT | Browser. PARTY-01 rights show as reviewed |
 | Admin orders | http://localhost:3000/admin/orders | Admin | Nav | See exceptions and returns | FR-ORD | Browser. The return shows הותאמה |
 | Finance | http://localhost:3000/admin/finance | Admin | Nav | Reconcile sandbox totals without a payout | FR-FIN-010 | Browser. ₪0 and no PSP |
-| Admin plans | http://localhost:3000/admin/plans | Admin | Nav | Show unpriced plans and missing contracts | FR-SUB | Browser. No signed contract |
+| Admin plans | http://localhost:3000/admin/plans | Admin | Nav | Show unpriced plans and publish commission rates | FR-SUB, FR-FIN | Browser. No signed contract. Commission publish is admin-only |
 | Audit | http://localhost:3000/admin/audit | Admin | Nav | Read recorded actions | FR-IAM | Browser. Shows the approval, sandbox purchase, and edit |
 | Warehouse queue | http://localhost:3000/supplier | Supplier, warehouse, admin | Role home | Pick, pack, label, dispatch | FR-IAM-003 | Browser as מחסן. Creator saw אין הרשאה |
 | Supplier offers | http://localhost:3000/supplier/catalog | Supplier, admin | Nav | Read approved offers | FR-CAT | Browser |
 | Stock counts | http://localhost:3000/supplier/stock | Supplier, warehouse, admin | Nav | Read counts, holds, and gaps | FR-INV-003 | Browser. PARTY-01 returned to 6 on hand and 0 held |
 | Returns | http://localhost:3000/supplier/returns | Supplier, warehouse, admin | Nav | Receive and reconcile once | FR-ORD | Browser. Stock returned to 6 |
 | Settlements | http://localhost:3000/supplier/settlements | Supplier, admin | Nav | Show supplier cost without paying it | FR-FIN-008 | Browser. ₪0 and not paid |
-| Warehouse settings | http://localhost:3000/supplier/settings | Supplier, warehouse, admin | Nav | Show PILOT-01 and missing integrations | FR-IAM-003 | Browser. No carrier connection |
+| Warehouse settings | http://localhost:3000/supplier/settings | Supplier, warehouse, admin | Nav | Show PILOT-01 and publish delivery tariffs | FR-IAM-003 | Browser. No carrier connection. A supplier publishes its own tariffs |
 
 Sample files: http://localhost:3000/samples/products.csv, http://localhost:3000/samples/stock.csv, http://localhost:3000/samples/party-products.csv, and http://localhost:3000/samples/party-stock.csv. The Party files are the journey fixture. LILAC-24 remains a separate development fixture.
 
@@ -124,10 +190,11 @@ Guest requests to `/admin`, `/catalog`, and `/supplier` redirected to login. A c
 
 | Check | Where | Result |
 |---|---|---|
-| `npm.cmd test` | Node plus local PGlite | 44 tests passed. Includes the reducer, the missed-confirmation recovery, the payment database races, the workspace hold, and the original 70 / 35 / 5 capture. |
-| `npm.cmd run lint` | ESLint | No findings. |
-| `tsc --noEmit` | App sources. Tests stay on the Node runner | Passed. |
-| `npm.cmd run build` | Next.js production | Passed. 45 pages generated. |
+| `npm.cmd test` | Node plus local PGlite, 23 November | 88 tests passed. Includes the experiment pace fixture, punchline claims, PayMe contract tests, the weekly ₪125 fixture, the weekly payout race, the earlier payment races, and the original 70 / 35 / 5 capture. |
+| Focused tests, 24 November | `tests/experiments.test.ts`, `tests/weekly-policy.test.ts`, `tests/payme-contract.test.ts` | 35 passed, 0 failed. The full suite was not repeated. |
+| `npm.cmd run lint` | ESLint, 24 November | No findings. |
+| `tsc --noEmit` | App sources, 24 November. Tests stay on the Node runner | Passed. |
+| `npm.cmd run build` | Next.js production, 24 November | Passed. The root layout sets `instant = false` so the locale cookie can set `lang` and `dir`. |
 | Browser | localhost, development role cookie | The Party Concept journey above. |
 | storey-dev | Not changed this session | `begin_cloud_nine_checkout` and `seller_plan_status` are still not installed. |
 
@@ -222,22 +289,22 @@ Until `20261122240000_seller_plan.sql` is applied, `seller_plan_status` is missi
 | FR-INV-007 | SQL verified locally | Expiry release returned the pack once. The second call returned 0. |
 | FR-INV-008 | sandbox verified; live blocked | `warehouseCheckout` closes after five minutes without a heartbeat. Operation blocked: closing live checkout. Dependency: no supplier heartbeat. |
 | FR-INV-009 | blocked | Operation blocked: releasing a pending physical move. Dependency: no scan. |
-| FR-FIN-001 | partial | The seller card shows wholesale, retail, and gross profit for Cloud Nine. Fee and fulfillment proceeds stay off the card. Dependency: rates are not approved. |
+| FR-FIN-001 | partial | The seller card shows wholesale, retail, and gross profit. On `weekly-2026-11` a published basis-point rate shows the creator fee. No rate is approved for production. |
 | FR-FIN-002 | blocked | Operation blocked: applying a GMV cost. Dependency: no approved schedule. |
 | FR-FIN-003 | partial | Prices are integer agorot. There is no multi-line discount to allocate. |
-| FR-FIN-004 | partial | A saved quote keeps its unit price. The inbox states when the published price later differs. Tax, freight, and platform fee stay uncalculated. |
+| FR-FIN-004 | partial | A saved quote keeps its price. `weekly-2026-11` also snapshots commission rates, tariff version, freight, sponsor and per-unit agorot. Tax stays uncalculated unless the quote already carries it. |
 | FR-FIN-005 | blocked | Operation blocked: authorizing or capturing a live charge. Dependency: no PSP contract. |
 | FR-FIN-006 | sandbox verified | The zero-tax 110 fixture balances. It is not posted to a database or a PSP. |
 | FR-FIN-007 | blocked | Operation blocked: funding a prepaid lot. Dependency: no lot contract. |
-| FR-FIN-008 | sandbox verified; live blocked | `reviewPayout` never sets `paid`. After the seven-day hold it returns `BLOCKED_NO_PSP`. Operation blocked: marking a bank payout paid. Dependency: no PSP confirmation. |
+| FR-FIN-008 | sandbox verified; live blocked | `pay-2026-11` still waits seven days. `weekly-2026-11` becomes eligible on verified delivery and aggregates one weekly payout per beneficiary. The maker is audited. The same actor cannot set `bank_paid`. The finance button only simulates completion. Operation blocked: a live bank payout. Dependency: no PSP confirmation. |
 | FR-FIN-009 | blocked | Operation blocked: putting a tax amount on a quote. Dependency: no approved tax determination. |
 | FR-FIN-010 | blocked | Operation blocked: closing a daily reconciliation. Dependency: no PSP balance. |
 | FR-WEB-001 | partial | `/s/maya/cloud-nine` can be copied and shared. The link is not opaque or revocable. |
 | FR-WEB-002 | partial | The Social Club studio exists for Maya. There is no versioned theme release. |
 | FR-WEB-003 | blocked | Operation blocked: serving a custom domain. Dependency: no DNS challenge. |
-| FR-WEB-004 | partial | One seller, ILS, quantity, Israeli address, and an explicit no-tax confirmation. Freight and a delivery window are not quoted. |
-| FR-WEB-005 | blocked | Operation blocked: submitting a payment. Dependency: no PSP. The checkout button now starts the hold only. |
-| FR-WEB-006 | blocked | Operation blocked: counting a visit. Dependency: no analytics store. |
+| FR-WEB-004 | partial | The cart is still one seller line. `weekly-2026-11` quotes freight, a delivery window and a blocking reason before payment. Pickup must be chosen explicitly. A carrier SLA is not connected. |
+| FR-WEB-005 | sandbox partial; live blocked | Hosted PayMe checkout can open one sandbox authorization when the partner key, seller mapping, and public https callback exist. The external charge has not been run. The local button still starts the hold. Operation blocked: a live charge. Dependency: no production PSP approval. |
+| FR-WEB-006 | partial; seller report blocked | A qualified visit can be stored locally while `STOREY_EXPERIMENT_FIRST_SHARE` is enabled. Creator, supplier, admin, and link-preview crawlers are excluded. Sellers do not see visits, checkout starts, refunded merchandise, or net GMV. Operation blocked: that seller report. Dependency: no analytics store. |
 | FR-ORD-001 | sandbox verified | Two supplier lines route into separate groups, lowest freight first. |
 | FR-ORD-002 | sandbox verified; live blocked | Capture is idempotent in memory. Operation blocked: converting a hold to a commitment after a PSP capture. Dependency: no PSP. |
 | FR-ORD-003 | blocked | Operation blocked: acknowledging a fulfillment order. Dependency: no warehouse outbox. |
@@ -245,7 +312,7 @@ Until `20261122240000_seller_plan.sql` is applied, `seller_plan_status` is missi
 | FR-ORD-005 | blocked | Operation blocked: sealing a parcel. Dependency: no packaging scan. |
 | FR-ORD-006 | blocked | Operation blocked: buying a label. Dependency: no carrier account. |
 | FR-ORD-007 | sandbox verified | The repeated handoff does not move the same units twice. Operation blocked: accepting a carrier scan. Dependency: no carrier. |
-| FR-ORD-008 | blocked | Operation blocked: showing an arrival window before payment. Dependency: no carrier SLA. |
+| FR-ORD-008 | sandbox partial | `weekly-2026-11` shows the supplier tariff window before payment. Operation blocked: a carrier SLA or a live arrival event. |
 | FR-ORD-009 | sandbox verified | Rejecting the unshipped remainder refunds only that remainder. A live stop-confirmation is not available. |
 | FR-ORD-010 | blocked | Operation blocked: showing a customer shipment status. Dependency: no parcel events. |
 | FR-RET-001 | sandbox verified | A return cannot exceed delivered units minus open returns. |
@@ -273,7 +340,7 @@ Until `20261122240000_seller_plan.sql` is applied, `seller_plan_status` is missi
 | FR-API-001 | blocked | Operation blocked: accepting a WMS snapshot. Dependency: no warehouse credential. |
 | FR-API-002 | blocked | Operation blocked: delivering a fulfillment outbox event. Dependency: no warehouse endpoint. |
 | FR-API-003 | blocked | Operation blocked: verifying a signed event. Dependency: no signing secret. |
-| FR-API-004 | blocked | Operation blocked: accepting a PSP webhook. Dependency: no PSP. |
+| FR-API-004 | sandbox partial; live blocked | `POST /payme/callback` checks the partner signature, re-reads the sandbox sale, and ignores a duplicate, a bad signature, a failed sale, and a cancellation. It does not call a live host. Operation blocked: a production webhook. Dependency: no production PSP. |
 | FR-API-005 | blocked | Operation blocked: quoting live freight or tax. Dependency: no carrier or tax adapter. |
 | FR-API-006 | blocked | Operation blocked: showing an operator timeline. Dependency: no event store. |
 | FR-API-007 | blocked | Operation blocked: mapping an integration tenant. Dependency: no external account. |
@@ -291,7 +358,7 @@ Until `20261122240000_seller_plan.sql` is applied, `seller_plan_status` is missi
 | AT-04 | sandbox verified | Two supplier lines route and refund separately. No live second supplier. |
 | AT-05 | blocked | Operation blocked: changing cost during a hold. Dependency: no cost schedule. |
 | AT-06 | sandbox verified | Zero-tax capture and refund cap. The processing-fee remainder is not posted. |
-| AT-07 | blocked | Operation blocked: replaying a PSP webhook. Dependency: no PSP. |
+| AT-07 | sandbox partial; live blocked | A repeated sandbox callback does not add a second journal. A failed callback does not capture. Operation blocked: replaying a live webhook. Dependency: no production PSP. |
 | AT-08 | partial | Social dedicate is rejected in the sandbox. A custom domain is not implemented. |
 | AT-09 | blocked | Operation blocked: applying a GMV band. Dependency: no approved schedule. |
 | AT-10 | blocked | Operation blocked: showing an approved tax amount. Dependency: no tax determination. |

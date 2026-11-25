@@ -1,3 +1,4 @@
+import { WorkspaceTitle } from "@/components/workspace-title";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -19,7 +20,7 @@ async function CartContent() {
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">עגלה</h1>
+      <WorkspaceTitle he="עגלה" en="Cart" />
       <p className="hint">העגלה, השיתוף ושמירת הטיוטה לא שומרים מלאי.</p>
       {listing && line ? (
         <article className="card">

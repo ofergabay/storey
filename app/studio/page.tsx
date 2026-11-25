@@ -1,3 +1,4 @@
+import { WorkspaceTitle } from "@/components/workspace-title";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -6,7 +7,9 @@ import { SellerClaim } from "@/components/seller-auth";
 import { SellerShell } from "@/components/seller-shell";
 import { SellerWorkspace } from "@/components/seller-workspace";
 import { Denied, RoleNav } from "@/components/role-nav";
-import { readAccess } from "@/lib/auth/access";
+import { openSurface } from "@/lib/auth/guards";
+import { pickCopy } from "@/lib/i18n/locale";
+import { readLocale } from "@/lib/i18n/server";
 import { isDevelopmentAdmin } from "@/lib/auth/admin";
 import { LISTING_PATH } from "@/lib/cloud-nine-public";
 import { CLOUD_NINE_SELLER } from "@/lib/cloud-nine-seller";
@@ -66,28 +69,29 @@ async function WorkspaceLoader() {
   );
 }
 
-async function StudioFrame() {
-  const access = await readAccess();
-  if (access.role === "guest") redirect("/login?next=/studio");
-  if (access.role !== "creator" && access.role !== "admin") {
+async function StudioFrame({ searchParams }: { searchParams: Promise<{ inspect?: string }> }) {
+  const [query, locale] = await Promise.all([searchParams, readLocale()]);
+  const opened = await openSurface("creator", "/studio", query.inspect, { allowAdmin: true });
+  if ("denied" in opened) {
     return (
       <main className="shell">
-        <Denied access={access} />
+        <Denied access={opened.denied} />
       </main>
     );
   }
+  const { access } = opened;
   if (access.userId?.startsWith("dev-")) {
     return (
       <main className="shell">
         <RoleNav access={access} />
-        <h1 className="page-title">סטודיו</h1>
-        <p>בוחרים מוצר מאושר, שומרים טיוטת מחיר, ומפרסמים רק אחרי שיש ספירת מלאי.</p>
+        <WorkspaceTitle he="סטודיו" en="Studio" />
+        <p>{pickCopy(locale, "בוחרים מוצר מאושר, שומרים טיוטת מחיר, ומפרסמים רק אחרי שיש ספירת מלאי.", "Choose an approved product, save a price draft, and publish only after a stock count.")}</p>
         <div className="home-actions">
           <Link className="button-publish" href="/catalog">
-            בחירת מוצרים
+            {pickCopy(locale, "בחירת מוצרים", "Choose products")}
           </Link>
           <Link className="button-secondary" href="/listings">
-            המודעות שלי
+            {pickCopy(locale, "המודעות שלי", "My listings")}
           </Link>
         </div>
       </main>
@@ -97,17 +101,17 @@ async function StudioFrame() {
   if (!session.userId) redirect("/login?next=/studio");
   return (
     <SellerShell current="pricing" admin={isDevelopmentAdmin(session.email)}>
-      <Suspense fallback={<p className="status">טוען את הסטודיו…</p>}>
+      <Suspense fallback={<p className="status">{pickCopy(locale, "טוען את הסטודיו…", "Loading the studio…")}</p>}>
         <WorkspaceLoader />
       </Suspense>
     </SellerShell>
   );
 }
 
-export default function StudioPage() {
+export default function StudioPage({ searchParams }: { searchParams: Promise<{ inspect?: string }> }) {
   return (
     <Suspense fallback={<p className="status">טוען את הסטודיו…</p>}>
-      <StudioFrame />
+      <StudioFrame searchParams={searchParams} />
     </Suspense>
   );
 }

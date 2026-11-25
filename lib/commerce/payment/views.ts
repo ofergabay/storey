@@ -17,17 +17,21 @@ export function buyerView(state: PayState): { charge: number; refundConfirmed: n
   };
 }
 
-export function creatorView(state: PayState, now: number): PartyMoney & { economic: number } {
+export function creatorView(state: PayState, now: number): PartyMoney & { economic: number; commission: number; expected: number } {
   const open = state.units.filter((unit) => !unit.refunded);
   const economic = open.reduce((sum, unit) => sum + unit.creatorPayable, 0) - open.reduce((sum, unit) => sum + (unit.prepaid ? unit.wholesale : 0), 0);
-  return { ...partyMoney(open, now, "creator"), economic, recovery: state.recovery.filter((row) => row.supplierId === "creator" && row.open).reduce((sum, row) => sum + row.amount, 0) };
+  const commission = open.reduce((sum, unit) => sum + unit.creatorCommission, 0);
+  const expected = open.reduce((sum, unit) => sum + unit.creatorPayable, 0);
+  return { ...partyMoney(open, now, "creator"), economic, commission, expected, recovery: state.recovery.filter((row) => row.supplierId === "creator" && row.open).reduce((sum, row) => sum + row.amount, 0) };
 }
 
-export function supplierView(state: PayState, supplierId: string, now: number): PartyMoney {
+export function supplierView(state: PayState, supplierId: string, now: number): PartyMoney & { commission: number; expected: number } {
   const open = state.units.filter((unit) => unit.supplierId === supplierId && !unit.refunded);
   const money = partyMoney(open, now, "supplier");
   return {
     ...money,
+    commission: open.reduce((sum, unit) => sum + unit.supplierCommission, 0),
+    expected: open.reduce((sum, unit) => sum + unit.supplierPayable, 0),
     recovery: state.recovery.filter((row) => row.supplierId === supplierId && row.open).reduce((sum, row) => sum + row.amount, 0),
   };
 }

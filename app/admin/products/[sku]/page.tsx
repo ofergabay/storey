@@ -1,9 +1,8 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Denied, RoleNav } from "@/components/role-nav";
-import { readAccess } from "@/lib/auth/access";
+import { requireAdminPage } from "@/lib/auth/admin-gate";
 import { saveProductCopy } from "@/lib/catalog/actions";
 import { readCatalog } from "@/lib/catalog/store";
 import { formatShekels } from "@/lib/money";
@@ -11,9 +10,9 @@ import { formatShekels } from "@/lib/money";
 export const metadata: Metadata = { title: "עריכת מוצר", description: "נוסח, עלות וזכויות." };
 
 async function EditorContent({ params }: { params: Promise<{ sku: string }> }) {
-  const [{ sku }, access] = await Promise.all([params, readAccess()]);
-  if (access.role === "guest") redirect("/login?next=/admin/catalog");
-  if (access.role !== "admin") return <Denied access={access} />;
+  const [{ sku }, gate] = await Promise.all([params, requireAdminPage("/admin/catalog")]);
+  if (!gate.admin) return <Denied access={gate.access} />;
+  const access = gate.access;
   const product = readCatalog().products.find((item) => item.sku === sku);
   if (!product) {
     return (
@@ -27,6 +26,9 @@ async function EditorContent({ params }: { params: Promise<{ sku: string }> }) {
   return (
     <>
       <RoleNav access={access} />
+      <p>
+        <Link href="/admin/catalog">חזרה לקטלוג שפורסם</Link>
+      </p>
       <h1 className="page-title">{product.titleHe}</h1>
       <p>נתוני ספק: {product.sku} · מחסן {product.warehouseCode} · עלות {formatShekels(product.costAgorot)}</p>
       <p className="hint">העלות נשארת אצל הניהול והיוצר. היא לא מופיעה בקישור הציבורי.</p>

@@ -1,9 +1,11 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { AuthPanel } from "@/components/auth-panel";
-import { SiteHeader } from "@/components/site-header";
+import { LandingBar } from "@/components/landing/landing-bar";
+import { landingFor, readAccess } from "@/lib/auth/access";
+import { readLocale } from "@/lib/i18n/server";
 import { sanitizeNextPath } from "@/lib/auth/oauth";
-import { readSession } from "@/lib/session";
 
 export const metadata: Metadata = {
   title: "כניסה",
@@ -11,11 +13,12 @@ export const metadata: Metadata = {
 };
 
 async function LoginContent({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
-  const [session, params] = await Promise.all([readSession(), searchParams]);
+  const [access, params, locale] = await Promise.all([readAccess(), searchParams, readLocale()]);
+  if (access.role !== "guest") redirect(landingFor(access.role));
   return (
     <>
-      <SiteHeader email={session.email} />
-      <AuthPanel mode="login" surface="page" nextPath={sanitizeNextPath(params.next) ?? undefined} errorCode={params.error} />
+      <LandingBar initialLocale={locale} />
+      <AuthPanel mode="login" surface="page" locale={locale} nextPath={sanitizeNextPath(params.next) ?? undefined} errorCode={params.error} />
     </>
   );
 }

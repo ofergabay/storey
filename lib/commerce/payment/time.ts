@@ -1,5 +1,19 @@
 type Parts = { y: number; m: number; d: number; hh: number; mm: number; ss: number };
 
+export function nowMs(): number {
+  return Date.now();
+}
+
+export function startOfJerusalemDay(isoDate: string): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+  if (!match) return null;
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const d = Number(match[3]);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  return zonedToUtc({ y, m, d, hh: 0, mm: 0, ss: 0 }, "Asia/Jerusalem");
+}
+
 export function addLocalDays(utcMs: number, days: number, timeZone: string): number {
   const parts = zonedParts(utcMs, timeZone);
   const shifted = new Date(Date.UTC(parts.y, parts.m - 1, parts.d + days, parts.hh, parts.mm, parts.ss));
@@ -14,7 +28,7 @@ export function addLocalDays(utcMs: number, days: number, timeZone: string): num
   return zonedToUtc(wanted, timeZone);
 }
 
-function zonedParts(utcMs: number, timeZone: string): Parts {
+export function zonedParts(utcMs: number, timeZone: string): Parts {
   const formatted = new Intl.DateTimeFormat("en-US", {
     timeZone,
     hourCycle: "h23",
@@ -33,7 +47,7 @@ function sameParts(left: Parts, right: Parts): boolean {
   return left.y === right.y && left.m === right.m && left.d === right.d && left.hh === right.hh && left.mm === right.mm && left.ss === right.ss;
 }
 
-function zonedToUtc(wanted: Parts, timeZone: string): number {
+export function zonedToUtc(wanted: Parts, timeZone: string): number {
   let utc = Date.UTC(wanted.y, wanted.m - 1, wanted.d, wanted.hh, wanted.mm, wanted.ss);
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const seen = zonedParts(utc, timeZone);

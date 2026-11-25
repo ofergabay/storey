@@ -1,9 +1,11 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { AuthPanel } from "@/components/auth-panel";
+import { LandingBar } from "@/components/landing/landing-bar";
 import { LeadForm } from "@/components/lead-form";
-import { SiteHeader } from "@/components/site-header";
-import { readSession } from "@/lib/session";
+import { landingFor, readAccess } from "@/lib/auth/access";
+import { readLocale } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
   title: "הרשמה",
@@ -11,15 +13,16 @@ export const metadata: Metadata = {
 };
 
 async function RegisterContent({ searchParams }: { searchParams: Promise<{ lead?: string; plan?: string; error?: string }> }) {
-  const [session, params] = await Promise.all([readSession(), searchParams]);
+  const [access, params, locale] = await Promise.all([readAccess(), searchParams, readLocale()]);
+  if (access.role !== "guest") redirect(landingFor(access.role));
   const leadPlan = params.lead === "1" && (params.plan === "branded" || params.plan === "scale") ? params.plan : null;
   return (
     <>
-      <SiteHeader email={session.email} />
+      <LandingBar initialLocale={locale} />
       {leadPlan ? (
         <LeadForm plan={leadPlan} />
       ) : (
-        <AuthPanel mode="register" surface="page" nextPath="/onboarding?plan=social" errorCode={params.error} />
+        <AuthPanel mode="register" surface="page" locale={locale} nextPath="/onboarding?plan=social" errorCode={params.error} />
       )}
     </>
   );

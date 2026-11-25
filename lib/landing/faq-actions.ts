@@ -2,11 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { readAccess } from "@/lib/auth/access";
+import { adminPageDecision } from "@/lib/auth/admin-gate";
 import { cleanFaqDraft, readLandingFaq, writeLandingFaq, type FaqItem } from "@/lib/landing/faq";
 
 async function allowed(): Promise<boolean> {
   const access = await readAccess();
-  return access.role === "admin";
+  return adminPageDecision(access.role) === "allow";
 }
 
 function refresh() {

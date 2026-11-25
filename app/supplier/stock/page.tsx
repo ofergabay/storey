@@ -1,22 +1,25 @@
+import { WorkspaceTitle } from "@/components/workspace-title";
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { Denied, RoleNav } from "@/components/role-nav";
-import { readAccess } from "@/lib/auth/access";
+import { openSurface } from "@/lib/auth/guards";
+import { supplierWarehouse } from "@/lib/auth/tenant";
 import { sellableQuantity } from "@/lib/catalog/model";
 import { readCatalog } from "@/lib/catalog/store";
 
 export const metadata: Metadata = { title: "ספירות מלאי", description: "ספירות פיתוח ופערים." };
 
-async function StockContent() {
-  const access = await readAccess();
-  if (access.role === "guest") redirect("/login?next=/supplier/stock");
-  if (access.role !== "supplier" && access.role !== "warehouse" && access.role !== "admin") return <Denied access={access} />;
-  const stock = readCatalog().stock;
+async function StockContent({ searchParams }: { searchParams: Promise<{ inspect?: string }> }) {
+  const query = await searchParams;
+  const opened = await openSurface("supplier", "/supplier/stock", query.inspect);
+  if ("denied" in opened) return <Denied access={opened.denied} />;
+  const { access, readOnly } = opened;
+  const warehouse = supplierWarehouse(access);
+  const stock = readCatalog().stock.filter((row) => readOnly || row.warehouseCode === warehouse);
   return (
     <>
       <RoleNav access={access} />
-      <h1 className="page-title">ספירות מלאי</h1>
+      <WorkspaceTitle he="ספירות מלאי" en="Stock counts" />
       <p className="hint">אלה ספירות פיתוח. הן לא אישור מחסן חי.</p>
       {stock.length === 0 ? <p className="status">אין ספירות.</p> : null}
       <ul>
@@ -31,11 +34,11 @@ async function StockContent() {
   );
 }
 
-export default function SupplierStockPage() {
+export default function SupplierStockPage({ searchParams }: { searchParams: Promise<{ inspect?: string }> }) {
   return (
     <main className="shell">
       <Suspense fallback={<p className="status">טוען…</p>}>
-        <StockContent />
+        <StockContent searchParams={searchParams} />
       </Suspense>
     </main>
   );

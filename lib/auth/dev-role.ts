@@ -3,15 +3,14 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-export type DevRole = "creator" | "supplier" | "warehouse" | "admin";
+export type DevRole = "creator" | "supplier" | "admin";
 
 const cookieName = "storey_dev_role";
 
 export async function readDevRole(): Promise<DevRole | null> {
-  if (process.env.NODE_ENV !== "development") return null;
+  const { developmentRole } = await import("./can");
   const value = (await cookies()).get(cookieName)?.value;
-  if (value === "creator" || value === "supplier" || value === "warehouse" || value === "admin") return value;
-  return null;
+  return developmentRole(process.env.NODE_ENV, value);
 }
 
 export async function setDevRole(role: DevRole | "guest") {

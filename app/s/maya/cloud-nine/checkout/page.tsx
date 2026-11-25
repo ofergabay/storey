@@ -49,6 +49,7 @@ async function CheckoutLoader() {
 
   return (
     <div className="copy">
+      <a className="button-secondary" href={LISTING_PATH}>חזרה למודעה</a>
       <p className="kicker">
         <span dir="ltr">{card.sellerHandle}</span>
       </p>
@@ -73,7 +74,7 @@ export default function CheckoutPage() {
     <main className="customer-shell">
       <article className="customer-card">
         <header className="topbar customer-topbar">
-          <Wordmark />
+          <Wordmark href={LISTING_PATH} />
         </header>
         <Suspense fallback={null}>
           <RequestMarker />

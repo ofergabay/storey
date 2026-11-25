@@ -2,14 +2,21 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { PayState } from "./workflow.ts";
 
-export type StoredPayment = { adapter: "test"; live: false; simulatedNow?: number; cancelReplayed?: boolean; state: PayState };
+export type StoredPayment = {
+  adapter: "test" | "payme";
+  live: false;
+  simulatedNow?: number;
+  cancelReplayed?: boolean;
+  paymeSaleId?: string;
+  state: PayState;
+};
 
 const file = path.join(process.cwd(), "data", "dev-payment-cases.json");
 
 export function readPaymentCases(): StoredPayment[] {
   try {
     const parsed = JSON.parse(readFileSync(file, "utf8")) as { cases?: StoredPayment[] };
-    return Array.isArray(parsed.cases) ? parsed.cases.filter((item) => item.adapter === "test" && item.live === false) : [];
+    return Array.isArray(parsed.cases) ? parsed.cases.filter((item) => (item.adapter === "test" || item.adapter === "payme") && item.live === false) : [];
   } catch {
     return [];
   }

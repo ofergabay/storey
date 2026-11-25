@@ -2,13 +2,14 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { googleCancelledHe, sanitizeNextPath, type AuthIntent, type AuthSurface } from "@/lib/auth/oauth";
+import { AUTH_PRODUCT_COOKIE, googleCancelledHe, sanitizeNextPath, sanitizeProductId, type AuthIntent, type AuthSurface } from "@/lib/auth/oauth";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import type { LandingLocale } from "@/lib/landing/copy";
 
 export function AuthPanel({
   mode,
   nextPath,
+  productId,
   surface,
   locale = "he",
   errorCode = null,
@@ -17,6 +18,7 @@ export function AuthPanel({
 }: {
   mode: AuthIntent;
   nextPath?: string;
+  productId?: string | null;
   surface: AuthSurface;
   locale?: LandingLocale;
   errorCode?: string | null;
@@ -42,10 +44,12 @@ export function AuthPanel({
     }
     const channel = register ? "social" : "";
     const next = sanitizeNextPath(nextPath);
+    const product = sanitizeProductId(productId);
     writeAuthCookie("storey_auth_intent", mode);
     writeAuthCookie("storey_auth_from", surface);
     writeAuthCookie("storey_auth_channel", channel);
     writeAuthCookie("storey_auth_next", next ? encodeURIComponent(next) : "");
+    writeAuthCookie(AUTH_PRODUCT_COOKIE, product ?? "");
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -96,7 +100,9 @@ export function AuthPanel({
       return;
     }
     const next = sanitizeNextPath(register ? "/onboarding?plan=social" : nextPath);
-    router.push(`/auth/continue?intent=${mode}${next ? `&next=${encodeURIComponent(next)}` : ""}`);
+    const product = sanitizeProductId(productId);
+    const productQuery = product ? `&product=${encodeURIComponent(product)}` : "";
+    router.push(`/auth/continue?intent=${mode}${next ? `&next=${encodeURIComponent(next)}` : ""}${productQuery}`);
     router.refresh();
   }
 

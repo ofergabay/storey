@@ -10,6 +10,7 @@ export function AuthOverlay({
   mode,
   locale,
   errorCode,
+  productId,
   returnFocus,
   onClose,
 }: {
@@ -17,23 +18,26 @@ export function AuthOverlay({
   mode: AuthIntent;
   locale: LandingLocale;
   errorCode?: string | null;
+  productId?: string | null;
   returnFocus: HTMLElement | null;
   onClose: () => void;
 }) {
   if (!open) return null;
-  return <AuthDialog key={mode} mode={mode} locale={locale} errorCode={errorCode} returnFocus={returnFocus} onClose={onClose} />;
+  return <AuthDialog key={mode} mode={mode} locale={locale} errorCode={errorCode} productId={productId} returnFocus={returnFocus} onClose={onClose} />;
 }
 
 function AuthDialog({
   mode,
   locale,
   errorCode,
+  productId,
   returnFocus,
   onClose,
 }: {
   mode: AuthIntent;
   locale: LandingLocale;
   errorCode?: string | null;
+  productId?: string | null;
   returnFocus: HTMLElement | null;
   onClose: () => void;
 }) {
@@ -102,6 +106,7 @@ function AuthDialog({
           errorCode={currentMode === mode ? errorCode : null}
           titleId={titleId}
           nextPath={currentMode === "register" ? "/onboarding?plan=social" : undefined}
+          productId={productId}
           onModeChange={setCurrentMode}
         />
       </div>

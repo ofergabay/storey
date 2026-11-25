@@ -1,20 +1,23 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { ChannelSelectionState } from "@/components/landing/channel-selection";
-import { RoleNav } from "@/components/role-nav";
-import { readAccess } from "@/lib/auth/access";
+import { LandingBar } from "@/components/landing/landing-bar";
+import { landingFor, readAccess } from "@/lib/auth/access";
+import { readLocale } from "@/lib/i18n/server";
 import { parseSelectedChannel } from "@/lib/landing/copy";
 
 export const metadata: Metadata = { title: "תוכניות", description: "השוואת תוכניות Storey." };
 
 async function PlansContent({ searchParams }: { searchParams: Promise<{ channel?: string }> }) {
-  const [access, query] = await Promise.all([readAccess(), searchParams]);
+  const [access, query, locale] = await Promise.all([readAccess(), searchParams, readLocale()]);
+  if (access.role !== "guest") redirect(landingFor(access.role));
   return (
     <>
-      <RoleNav access={access} />
-      <h1 className="page-title">תוכניות</h1>
-      <p>כרגע נפתח רק מסלול מכירה חברתית, בלי חיוב.</p>
-      <ChannelSelectionState initialChannel={parseSelectedChannel(query.channel)} />
+      <LandingBar initialLocale={locale} />
+      <h1 className="page-title">{locale === "en" ? "Plans" : "תוכניות"}</h1>
+      <p>{locale === "en" ? "Only Social Selling is open right now, with no charge." : "כרגע נפתח רק מסלול מכירה חברתית, בלי חיוב."}</p>
+      <ChannelSelectionState locale={locale} initialChannel={parseSelectedChannel(query.channel)} />
     </>
   );
 }
